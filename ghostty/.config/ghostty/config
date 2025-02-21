@@ -1,0 +1,14 @@
+font-family = JetBrains Mono
+theme = tokyonight
+window-save-state = always
+window-colorspace = display-p3
+
+custom-shader = shaders/bloom060.glsl
+font-thicken = true
+background-opacity = 0.9
+background-blur-radius = 20
+macos-titlebar-style = hidden
+adjust-cell-height = 20%
+
+keybind = global:ctrl+grave_accent=toggle_quick_terminal
+keybind = cmd+c=text:\x03
