@@ -403,6 +403,7 @@
                     },
                     {
                         "description": "PC-Style Control+Up/Down/Left/Right",
+                        "enabled": false,
                         "manipulators": [
                             {
                                 "conditions": [
