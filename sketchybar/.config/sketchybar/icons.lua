@@ -42,11 +42,13 @@ local icons = {
 		},
 		git = {
 			git = "󰊢",
-			added = "􀑍",
-			modified = "􀈊",
+			added = "􀃜",
+			modified = "􀈎",
 			removed = "􀃞",
 			sync = "􂣽",
 			fetch = "􀄬",
+			up = "􀄨",
+			down = "􀄩",
 		},
 	},
 

@@ -2,6 +2,7 @@ local colors = require("colors")
 local icons = require("icons")
 local settings = require("settings")
 
+local status_icon_padding = 5
 local git_repo = "~/dotfiles"
 local git_base_cmd = "git -C " .. git_repo
 
@@ -19,6 +20,11 @@ local git_status = "( "
 	.. git_base_cmd
 	.. ' diff --cached --name-status HEAD ) | \
 awk \'{counts[$1]++} END { printf "{\\"A\\": %d, \\"M\\": %d, \\"D\\": %d}\\n", counts["A"]+0, counts["M"]+0, counts["D"]+0 }\''
+local git_sync_count_cmd = 'printf "{\\"up\\": %d, \\"down\\": %d}\n" $('
+	.. git_base_cmd
+	.. " rev-list --count @{u}..HEAD) $("
+	.. git_base_cmd
+	.. " rev-list --count HEAD..@{u})"
 
 local dotfiles_outofsync = sbar.add("item", "widgets.dotfiles_sync_icon", {
 	drawing = false,
@@ -64,8 +70,8 @@ local git_add = sbar.add("item", {
 		string = "?",
 		align = "right",
 	},
-	padding_left = 10,
-	padding_right = 10,
+	padding_left = status_icon_padding,
+	padding_right = status_icon_padding,
 })
 
 local git_mod = sbar.add("item", {
@@ -85,8 +91,8 @@ local git_mod = sbar.add("item", {
 		string = "?",
 		align = "right",
 	},
-	padding_left = 10,
-	padding_right = 10,
+	padding_left = status_icon_padding,
+	padding_right = status_icon_padding,
 })
 
 local git_rem = sbar.add("item", {
@@ -106,15 +112,15 @@ local git_rem = sbar.add("item", {
 		string = "?",
 		align = "right",
 	},
-	padding_left = 10,
-	padding_right = 10,
+	padding_left = status_icon_padding,
+	padding_right = status_icon_padding,
 })
 
-local sync_status = sbar.add("item", {
+local git_sync_up = sbar.add("item", {
 	position = "popup." .. dotfiles_outofsync.name,
 	drawing = false,
 	icon = {
-		string = icons.git.fetch,
+		string = icons.git.up,
 		align = "left",
 		color = colors.blue,
 		font = {
@@ -122,8 +128,34 @@ local sync_status = sbar.add("item", {
 			size = 14.0,
 		},
 	},
-	padding_left = 10,
-	padding_right = 10,
+	label = {
+		padding_left = 5,
+		string = "?",
+		align = "right",
+	},
+	padding_left = status_icon_padding,
+	padding_right = status_icon_padding,
+})
+
+local git_sync_down = sbar.add("item", {
+	position = "popup." .. dotfiles_outofsync.name,
+	drawing = false,
+	icon = {
+		string = icons.git.down,
+		align = "left",
+		color = colors.blue,
+		font = {
+			style = settings.font.style_map["Regular"],
+			size = 14.0,
+		},
+	},
+	label = {
+		padding_left = 5,
+		string = "?",
+		align = "right",
+	},
+	padding_left = status_icon_padding,
+	padding_right = status_icon_padding,
 })
 
 local function updateGitStatus()
@@ -142,8 +174,10 @@ local function git_status_popup()
 			git_mod:set({ label = modifications.M, drawing = modifications.M ~= 0 })
 			git_rem:set({ label = modifications.D, drawing = modifications.D ~= 0 })
 		end)
-		sbar.exec(git_sync_cmd, function(_, exit_code)
-			sync_status:set({ drawing = exit_code == 1 })
+		print(git_sync_count_cmd)
+		sbar.exec(git_sync_count_cmd, function(sync_count)
+			git_sync_up:set({ label = sync_count.up, drawing = sync_count.up ~= 0 })
+			git_sync_down:set({ label = sync_count.down, drawing = sync_count.down ~= 0 })
 		end)
 	end
 end
