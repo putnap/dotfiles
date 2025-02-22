@@ -7,12 +7,10 @@ local front_app = sbar.add("item", "front_app", {
 	icon = {
 		drawing = false,
 		color = colors.white,
-		highlight_color = colors.green,
 		font = "sketchybar-app-font:Regular:16.0",
 		y_offset = -1,
 	},
 	label = {
-		highlight_color = colors.green,
 		font = {
 			style = settings.font.style_map["Black"],
 			size = 12.0,

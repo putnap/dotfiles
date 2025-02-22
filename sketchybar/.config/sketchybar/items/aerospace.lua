@@ -181,7 +181,6 @@ for _, entry in ipairs(t) do
 		display = monitor_id,
 		icon = {
 			color = colors.with_alpha(colors.white, 0.3),
-			highlight_color = colors.green,
 			font = { family = settings.font.numbers },
 			string = workspace_index,
 			padding_left = 10,
@@ -235,6 +234,11 @@ for _, entry in ipairs(t) do
 	workspace:subscribe("mouse.exited", function()
 		-- Maintain highlight if this is the focused workspace
 		if workspace_index == focused_workspace_index then
+			sbar.animate("tanh", 10, function()
+				workspace:set({
+					background = { border_width = 1 },
+				})
+			end)
 			return
 		end
 
@@ -242,7 +246,7 @@ for _, entry in ipairs(t) do
 			workspace:set({
 				icon = { highlight = false },
 				label = { highlight = false },
-				background = { border_width = 0 },
+				background = { border_width = 1 },
 			})
 		end)
 	end)
@@ -266,6 +270,6 @@ sbar.exec("aerospace list-workspaces --focused", function(focused_workspace)
 	workspaces[focused_workspace_index]:set({
 		icon = { highlight = true },
 		label = { highlight = true },
-		background = { border_width = 1, border_color = colors.green },
+		background = { border_color = colors.green },
 	})
 end)

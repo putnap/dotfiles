@@ -7,7 +7,7 @@ local battery = sbar.add("item", "widgets.battery", {
 	icon = {
 		font = {
 			style = settings.font.style_map["Regular"],
-			size = 19.0,
+			size = 17.0,
 		},
 	},
 	label = { font = { family = settings.font.numbers } },
@@ -15,32 +15,49 @@ local battery = sbar.add("item", "widgets.battery", {
 	popup = { align = "center" },
 })
 
+local percentage = sbar.add("item", {
+	position = "popup." .. battery.name,
+	icon = {
+		string = "Battery",
+		align = "left",
+		width = 150,
+	},
+	label = {
+		string = "??%",
+		align = "right",
+	},
+	padding_left = 10,
+	padding_right = 10,
+})
+
 local remaining_time = sbar.add("item", {
 	position = "popup." .. battery.name,
 	icon = {
 		string = "Time remaining:",
-		width = 100,
 		align = "left",
+		width = 150,
 	},
 	label = {
 		string = "??:??h",
-		width = 100,
 		align = "right",
 	},
+	padding_left = 10,
+	padding_right = 10,
+	drawing = false,
 })
 
 battery:subscribe({ "routine", "power_source_change", "system_woke" }, function()
 	sbar.exec("pmset -g batt", function(batt_info)
 		local icon = "!"
-		-- local label = "?"
+		local label = "??%"
 
 		local found, _, charge = batt_info:find("(%d+)%%")
 		if found then
 			charge = tonumber(charge)
-			-- label = charge .. "%"
+			label = charge .. "%"
 		end
 
-		local color = colors.gray
+		local color = colors.fg
 		local charging, _, _ = batt_info:find("AC Power")
 
 		if charging then
@@ -61,10 +78,10 @@ battery:subscribe({ "routine", "power_source_change", "system_woke" }, function(
 			end
 		end
 
-		-- local lead = ""
-		-- if found and charge < 10 then
-		-- 	lead = "0"
-		-- end
+		local lead = ""
+		if found and charge < 10 then
+			lead = "0"
+		end
 
 		battery:set({
 			icon = {
@@ -72,6 +89,9 @@ battery:subscribe({ "routine", "power_source_change", "system_woke" }, function(
 				color = color,
 			},
 			-- label = { string = lead .. label },
+		})
+		percentage:set({
+			label = { string = lead .. label },
 		})
 	end)
 end)
@@ -82,7 +102,6 @@ local function battery_collapse_details()
 		return
 	end
 	battery:set({ popup = { drawing = false } })
-	-- sbar.remove("/volume.device\\.*/")
 end
 
 battery:subscribe("mouse.clicked", function()
@@ -91,19 +110,17 @@ battery:subscribe("mouse.clicked", function()
 
 	if drawing == "off" then
 		sbar.exec("pmset -g batt", function(batt_info)
+			local charging, _, _ = batt_info:find("AC Power")
 			local found, _, remaining = batt_info:find(" (%d+:%d+) remaining")
 			local label = found and remaining .. "h" or "No estimate"
-			remaining_time:set({ label = label })
+			remaining_time:set({ drawing = not charging, label = label })
 		end)
 	end
 end)
 battery:subscribe("mouse.exited.global", battery_collapse_details)
-
-sbar.add("bracket", "widgets.battery.bracket", { battery.name }, {
-	background = { color = colors.bg1 },
-})
-
-sbar.add("item", "widgets.battery.padding", {
-	position = "right",
-	width = settings.group_paddings,
-})
+battery:subscribe("mouse.entered", function()
+	battery:set({ icon = { highlight = true } })
+end)
+battery:subscribe("mouse.exited", function()
+	battery:set({ icon = { highlight = false } })
+end)
