@@ -13,10 +13,30 @@ vim.keymap.set({ "n", "v" }, "<leader>y", [["+y]], { desc = "Yank to system clip
 vim.keymap.set("n", "<leader>Y", [["+Y]], { desc = "Yank line wise to system clipboard" })
 vim.keymap.set({ "n", "v" }, "<leader>d", '"_d', { desc = "Delete to void register" })
 
-vim.keymap.set("n", "=", [[<cmd>vertical resize +5<cr>]], { desc = "Vertical Window size increase" })
-vim.keymap.set("n", "-", [[<cmd>vertical resize -5<cr>]], { desc = "Vertical Window size decrease" })
-vim.keymap.set("n", "+", [[<cmd>horizontal resize +2<cr>]], { desc = "Horizontal Window size increase" })
-vim.keymap.set("n", "_", [[<cmd>horizontal resize -2<cr>]], { desc = "Horizontal Window size decrease" })
+vim.keymap.set(
+    "n",
+    "<C-Left>",
+    [[<cmd>lua require("tmux").resize_left()<cr>]],
+    { remap = true, desc = "Vertical Window size increase" }
+)
+vim.keymap.set(
+    "n",
+    "<C-Right>",
+    [[<cmd>lua require("tmux").resize_right()<cr>]],
+    { remap = true, desc = "Vertical Window size decrease" }
+)
+vim.keymap.set(
+    "n",
+    "<C-Down>",
+    [[<cmd>lua require("tmux").resize_bottom()<cr>]],
+    { remap = true, desc = "Horizontal Window size increase" }
+)
+vim.keymap.set(
+    "n",
+    "<C-Up>",
+    [[<cmd>lua require("tmux").resize_top()<cr>]],
+    { remap = true, desc = "Horizontal Window size decrease" }
+)
 
 vim.keymap.set("n", "<leader>x", "<cmd>!chmod +x %<CR>", { silent = true, desc = "Make current file executable" })
 
