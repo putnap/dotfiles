@@ -194,6 +194,7 @@ alt-s = 'exec-and-forget open -a /Applications/Spotify.app'
 alt-x = 'exec-and-forget open -a $HOME/Applications/Chrome\ Apps.localized/SoundCloud.app'
 alt-a = 'exec-and-forget open -a /Applications/ChatGPT.app'
 alt-m = 'exec-and-forget open -a /Applications/Messenger.localized/Messenger.app'
+alt-r = 'exec-and-forget open -a /Applications/rekordbox\ 7/rekordbox.app'
 
 # 'service' binding mode declaration.
 # See: https://nikitabobko.github.io/AeroSpace/guide#binding-modes
