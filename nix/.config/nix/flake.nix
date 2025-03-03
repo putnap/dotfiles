@@ -6,16 +6,13 @@
     nix-darwin.url = "github:LnL7/nix-darwin";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
     nix-homebrew.url = "github:zhaofengli-wip/nix-homebrew";
-    home-manager.url = "github:nix-community/home-manager";
+    # home-manager.url = "github:nix-community/home-manager";
   };
 
   outputs = inputs@{ self, nix-darwin, nixpkgs, nix-homebrew, home-manager }:
     let
       system = "aarch64-darwin";
       user = "papu";
-      pkgs = import nixpkgs {
-        inherit system;
-      };
       configuration = { pkgs, config, ... }: {
 
         nixpkgs.config.allowUnfree = true;
@@ -59,6 +56,7 @@
                 cargo
                 nodejs
                 jdk
+                zig
 
                 # cloud tools
                 google-cloud-sdk
@@ -79,6 +77,10 @@
               if [[ -f "/opt/homebrew/bin/brew" ]] then
                 eval "$(/opt/homebrew/bin/brew shellenv)"
               fi
+              
+              function nixr() {
+                darwin-rebuild switch --flake "$(readlink -f ~/.config/nix)#mac"
+              }
             '';
           };
 
@@ -93,7 +95,6 @@
           brews = [
             "mas"
             "sketchybar"
-            "svim"
             "borders"
             "lua"
             "switchaudio-osx"
@@ -157,7 +158,7 @@
         system.keyboard.remapCapsLockToEscape = true;
 
         # Add ability to used TouchID for sudo authentication
-        security.pam.enableSudoTouchIdAuth = true;
+        security.pam.services.sudo_local.touchIdAuth = true;
 
         # Necessary for using flakes on this system.
         nix.settings.experimental-features = "nix-command flakes";
@@ -187,40 +188,39 @@
         ];
       };
 
-      # Expose the package set, including overlays, for convenience.
-      darwinPackages = self.darwinConfigurations."mac".pkgs;
+      # # Expose the package set, including overlays, for convenience.
+      # darwinPackages = self.darwinConfigurations."mac".pkgs;
 
-      homeConfigurations.${user} = home-manager.lib.homeManagerConfiguration {
-        inherit pkgs;
-        modules = [{
-          programs.home-manager.enable = true;
-          home = {
-            sessionPath = [
-              "/run/current-system/sw/bin"
-              "$HOME/.nix-profile/bin"
-            ];
-            username = user;
-            homeDirectory = "/Users/${user}";
-            stateVersion = "25.05";
-            activation.startBrewServices = home-manager.lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-              export PATH="/usr/bin:/bin:/usr/sbin:/sbin:/run/current-system/sw/bin:$HOME/.nix-profile/bin:$PATH"
-              echo "Starting brew services..."
-              brew services restart svim
-              brew services restart sketchybar
-            '';
-          };
-        }];
-      };
-      apps.${system}.switchAll = {
-        type = "app";
-        program = builtins.toString (pkgs.writeShellScript "switch-all"
-          ''
-            set -e
-            echo "Switching system configuration (nix-darwin)..."
-            darwin-rebuild switch --flake "${toString self}#mac"
-            echo "Switching user configuration (Home Manager)..."
-            home-manager switch --flake "${toString self}#${user}"
-          '');
-      };
+      # homeConfigurations.${user} = home-manager.lib.homeManagerConfiguration {
+      #   inherit pkgs;
+      #   modules = [{
+      #     programs.home-manager.enable = true;
+      #     home = {
+      #       sessionPath = [
+      #         "/run/current-system/sw/bin"
+      #         "$HOME/.nix-profile/bin"
+      #       ];
+      #       username = user;
+      #       homeDirectory = "/Users/${user}";
+      #       stateVersion = "25.05";
+      #       activation.startBrewServices = home-manager.lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+      #         export PATH="/usr/bin:/bin:/usr/sbin:/sbin:/run/current-system/sw/bin:$HOME/.nix-profile/bin:$PATH"
+      #         echo "Starting brew services..."
+      #         brew services restart sketchybar
+      #       '';
+      #     };
+      #   }];
+      # };
+      # apps.${system}.switchAll = {
+      #   type = "app";
+      #   program = builtins.toString (pkgs.writeShellScript "switch-all"
+      #     ''
+      #       set -e
+      #       echo "Switching system configuration (nix-darwin)..."
+      #       darwin-rebuild switch --flake "${toString self}#mac"
+      #       echo "Switching user configuration (Home Manager)..."
+      #       home-manager switch --flake "${toString self}#${user}"
+      #     '');
+      # };
     };
 }

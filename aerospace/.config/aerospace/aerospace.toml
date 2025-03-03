@@ -1,5 +1,6 @@
 after-startup-command = [
   'exec-and-forget borders active_color=0xffc3e88d inactive_color=0xff494d64 width=5.0',
+  'exec-and-forget sketchybar',
 ]
 
 # Notify Sketchybar about workspace change
@@ -58,24 +59,43 @@ automatically-unhide-macos-hidden-apps = false
 # if.app-name-regex-substring = 'whatsapp'
 # run = 'layout tiling'
 
-# [[on-window-detected]]
-# if.app-name-regex-substring = 'messenger'
-# run = 'layout floating'
+[[on-window-detected]]
+if.app-name-regex-substring = 'sublime\ text'
+run = 'move-node-to-workspace 3'
 
+# Media apps
+[[on-window-detected]]
+if.app-name-regex-substring = 'spotify'
+run = 'move-node-to-workspace 4'
+
+[[on-window-detected]]
+if.app-name-regex-substring = 'soundcloud'
+run = 'move-node-to-workspace 4'
+
+# Messenger apps
+[[on-window-detected]]
+if.app-name-regex-substring = 'messenger'
+run = 'move-node-to-workspace 5'
+
+[[on-window-detected]]
+if.app-name-regex-substring = 'dicord'
+run = 'move-node-to-workspace 5'
+
+[[on-window-detected]]
+if.app-name-regex-substring = 'whatsapp'
+run = 'move-node-to-workspace 5'
+
+[[on-window-detected]]
+if.app-name-regex-substring = 'chatgpt'
+run = 'move-node-to-workspace 5'
+
+# Other
 [[on-window-detected]]
 if.app-name-regex-substring = 'finder'
 run = 'layout floating'
 
 [[on-window-detected]]
 if.app-name-regex-substring = 'camera'
-run = 'layout floating'
-
-[[on-window-detected]]
-if.app-name-regex-substring = 'dicord'
-run = 'layout floating'
-
-[[on-window-detected]]
-if.app-name-regex-substring = 'trello'
 run = 'layout floating'
 
 # Possible values: (qwerty|dvorak)
@@ -189,6 +209,7 @@ alt-shift-enter = 'mode apps'
 alt-w = 'exec-and-forget open -a /Applications/WhatsApp.app'
 alt-b = 'exec-and-forget open -a /Applications/Google\ Chrome.app'
 alt-t = 'exec-and-forget open -a /Applications/Ghostty.app'
+alt-g = 'exec-and-forget open -a /Applications/Ghostty.app'
 alt-n = 'exec-and-forget open -a /Applications/Sublime\ Text.app'
 alt-s = 'exec-and-forget open -a /Applications/Spotify.app'
 alt-x = 'exec-and-forget open -a $HOME/Applications/Chrome\ Apps.localized/SoundCloud.app'
