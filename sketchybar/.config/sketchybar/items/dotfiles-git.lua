@@ -29,27 +29,19 @@ local git_sync_count_cmd = 'printf "{\\"up\\": %d, \\"down\\": %d}\n" $('
 local dotfiles_outofsync = sbar.add("item", "widgets.dotfiles_sync_icon", {
 	drawing = false,
 	position = "right",
-	padding_right = 9,
 	icon = {
 		string = icons.git.git,
-		width = 0,
-		align = "left",
 		color = colors.fg,
 		font = {
 			style = settings.font.style_map["Bold"],
 			size = 18.0,
 		},
 	},
-	label = {
-		width = 18,
-		align = "left",
-		font = {
-			style = settings.font.style_map["Regular"],
-			size = 14.0,
-		},
-	},
+	width = 32,
 	update_freq = 120,
 	updates = true,
+	-- padding_left = settings.paddings,
+	-- padding_right = settings.paddings,
 	popup = { align = "center", horizontal = true },
 })
 

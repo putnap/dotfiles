@@ -29,18 +29,6 @@ local volume_icon = sbar.add("item", "widgets.volume2", {
 	popup = { align = "center" },
 })
 
--- local volume_bracket = sbar.add("bracket", "widgets.volume.bracket", {
--- 	volume_icon.name,
--- }, {
--- 	background = { color = colors.bg1 },
--- 	popup = { align = "center" },
--- })
-
--- sbar.add("item", "widgets.volume.padding", {
--- 	position = "right",
--- 	width = settings.group_paddings,
--- })
-
 local volume_slider = sbar.add("slider", popup_width, {
 	position = "popup." .. volume_icon.name,
 	slider = {
