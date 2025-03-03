@@ -3,7 +3,6 @@ theme = tokyonight
 window-save-state = always
 window-colorspace = display-p3
 
-custom-shader = shaders/bloom060.glsl
 font-thicken = true
 background-opacity = 0.9
 background-blur-radius = 20
