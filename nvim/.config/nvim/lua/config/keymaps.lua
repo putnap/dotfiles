@@ -38,6 +38,21 @@ vim.keymap.set(
     { remap = true, desc = "Horizontal Window size decrease" }
 )
 
+vim.keymap.set("n", "<C-h>", [[<cmd>lua require("tmux").move_left()<cr>]], { desc = "Go to Left Window", remap = true })
+vim.keymap.set(
+    "n",
+    "<C-j>",
+    [[<cmd>lua require("tmux").move_bottom()<cr>]],
+    { desc = "Go to Lower Window", remap = true }
+)
+vim.keymap.set("n", "<C-k>", [[<cmd>lua require("tmux").move_top()<cr>]], { desc = "Go to Upper Window", remap = true })
+vim.keymap.set(
+    "n",
+    "<C-l>",
+    [[<cmd>lua require("tmux").move_right()<cr>]],
+    { desc = "Go to Right Window", remap = true }
+)
+
 vim.keymap.set("n", "<leader>x", "<cmd>!chmod +x %<CR>", { silent = true, desc = "Make current file executable" })
 
 vim.keymap.set("n", "<C-a>", "gg0vG$", { desc = "Select all text" })
