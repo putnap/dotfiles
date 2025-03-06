@@ -78,7 +78,7 @@ if.app-name-regex-substring = 'messenger'
 run = 'move-node-to-workspace 5'
 
 [[on-window-detected]]
-if.app-name-regex-substring = 'dicord'
+if.app-name-regex-substring = 'discord'
 run = 'move-node-to-workspace 5'
 
 [[on-window-detected]]
