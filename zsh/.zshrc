@@ -89,6 +89,11 @@ alias as='aerospace'
 eval "$(fzf --zsh)"
 eval "$(zoxide init --cmd cd zsh)"
 
+# carapace shell integration
+export CARAPACE_BRIDGES='zsh,fish,bash,inshellisense' # optional
+zstyle ':completion:*' format $'\e[2;37mCompleting %d\e[m'
+source <(carapace _carapace)
+
 # Paths
 export GOPATH=$HOME/go
 export PATH="$PATH:$HOME/.local/bin:$GOPATH/bin"

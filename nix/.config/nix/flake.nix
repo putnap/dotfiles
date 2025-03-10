@@ -46,6 +46,7 @@
                 p7zip
                 poppler
                 btop
+                carapace
 
                 # dev SDKs
                 python3
