@@ -57,6 +57,7 @@
                 nodejs
                 jdk
                 zig
+                elixir_1_18
 
                 # cloud tools
                 google-cloud-sdk
