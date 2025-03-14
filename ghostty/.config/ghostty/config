@@ -4,7 +4,7 @@ window-save-state = always
 window-colorspace = display-p3
 
 font-thicken = true
-background-opacity = 0.9
+# background-opacity = 0.9
 background-blur-radius = 20
 macos-titlebar-style = hidden
 adjust-cell-height = 20%
