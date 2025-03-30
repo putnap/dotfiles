@@ -85,6 +85,24 @@ alias c='clear'
 alias lg='lazygit'
 alias as='aerospace'
 
+# git aliases
+alias gaa="git add --all"
+alias gap="git add -p"
+alias gb="git branch"
+alias gcb="git checkout -b"
+alias gc="git checkout"
+alias gcm="git checkout main"
+alias gf="git fetch"
+alias gm="git merge"
+alias gp="git push"
+alias gpf="git push -f"
+alias gss="git status"
+alias gs="git status -s"
+alias glogg="git log --graph --pretty=oneline --decorate --abbrev-commit"
+alias glog="git log --pretty=oneline --decorate --abbrev-commit -n 10"
+alias gk="git commit -m"
+alias gwa="git-worktree-add"
+
 # Shell integrations
 eval "$(fzf --zsh)"
 eval "$(zoxide init --cmd cd zsh)"
@@ -94,9 +112,12 @@ export CARAPACE_BRIDGES='zsh,fish,bash,inshellisense' # optional
 zstyle ':completion:*' format $'\e[2;37mCompleting %d\e[m'
 source <(carapace _carapace)
 
+# shell integrations
+source <(COMPLETE=zsh tms)
+
 # Paths
 export GOPATH=$HOME/go
-export PATH="$PATH:$HOME/.local/bin:$GOPATH/bin"
+export PATH="$PATH:$HOME/.local/bin:$GOPATH/bin:/usr/local/share/dotnet"
 
 # yazi helper function
 function y() {
