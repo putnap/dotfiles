@@ -1,0 +1,7 @@
+[[search_dirs]]
+path = "~/Documents/Projects"
+depth = 1
+
+[[search_dirs]]
+path = "~/dotfiles"
+depth = 1
