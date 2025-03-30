@@ -207,7 +207,7 @@ alt-shift-semicolon = 'mode service'
 alt-shift-enter = 'mode apps'
 
 alt-w = 'exec-and-forget open -a /Applications/WhatsApp.app'
-alt-b = 'exec-and-forget open -a /Applications/Google\ Chrome.app'
+alt-b = 'exec-and-forget open -a /Applications/Zen.app'
 alt-t = 'exec-and-forget open -a /Applications/Ghostty.app'
 alt-g = 'exec-and-forget open -a /Applications/Ghostty.app'
 alt-n = 'exec-and-forget open -a /Applications/Sublime\ Text.app'
