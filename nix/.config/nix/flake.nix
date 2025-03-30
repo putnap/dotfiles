@@ -38,6 +38,7 @@
                 imagemagick
                 neovim
                 tmux
+                tmux-sessionizer
                 oh-my-posh
                 fzf
                 zoxide
@@ -51,14 +52,15 @@
                 # dev SDKs
                 python3
                 pipx
+                uv
                 go
-                dotnet-sdk_8
                 chafa
                 cargo
                 nodejs
+                pnpm
                 jdk
                 zig
-                elixir_1_18
+                elixir
 
                 # cloud tools
                 google-cloud-sdk
@@ -113,6 +115,7 @@
             "aerospace"
             "sf-symbols"
             "karabiner-elements"
+            "raycast"
           ];
           masApps = { };
           onActivation.cleanup = "zap";
