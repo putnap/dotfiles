@@ -25,6 +25,16 @@ return {
                 explorer = {
                     hidden = true,
                     -- ignored = true,
+                    win = {
+                        list = {
+                            keys = {
+                                ["<C-h>"] = false,
+                                ["<C-j>"] = false,
+                                ["<C-k>"] = false,
+                                ["<C-l>"] = false,
+                            },
+                        },
+                    },
                 },
                 files = {
                     hidden = true,
