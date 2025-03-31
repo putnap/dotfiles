@@ -32,8 +32,26 @@ return {
                                 ["<C-j>"] = false,
                                 ["<C-k>"] = false,
                                 ["<C-l>"] = false,
+                                ["<leader>af"] = "avante_add_files",
                             },
                         },
+                    },
+                    actions = {
+                        avante_add_files = function(_, selected)
+                            local filepath = selected.file
+                            local relative_path = require("avante.utils").relative_path(filepath)
+
+                            local sidebar = require("avante").get()
+
+                            local open = sidebar:is_open()
+                            -- ensure avante sidebar is open
+                            if not open then
+                                require("avante.api").ask()
+                                sidebar = require("avante").get()
+                            end
+
+                            sidebar.file_selector:add_selected_file(relative_path)
+                        end,
                     },
                 },
                 files = {
