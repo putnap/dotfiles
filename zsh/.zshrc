@@ -85,6 +85,7 @@ alias v='nvim'
 alias c='clear'
 alias lg='lazygit'
 alias as='aerospace'
+alias d='docker'
 
 # git aliases
 alias gaa="git add --all"
