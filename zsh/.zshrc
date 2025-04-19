@@ -119,7 +119,8 @@ source <(COMPLETE=zsh tms)
 
 # Paths
 export GOPATH=$HOME/go
-export PATH="$PATH:$HOME/.local/bin:$GOPATH/bin:/usr/local/share/dotnet"
+export ANDROID_HOME="$HOME/Library/Android/sdk"
+export PATH="$PATH:$HOME/.local/bin:$GOPATH/bin:/usr/local/share/dotnet:$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools"
 
 # yazi helper function
 function y() {
