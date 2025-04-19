@@ -58,6 +58,7 @@
                 cargo
                 nodejs
                 pnpm
+                yarn
                 jdk
                 zig
                 elixir
@@ -83,6 +84,7 @@
               fi
               
               function nixr() {
+                nix flake update --flake "$(readlink -f ~/.config/nix)"
                 darwin-rebuild switch --flake "$(readlink -f ~/.config/nix)#mac"
               }
             '';
