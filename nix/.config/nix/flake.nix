@@ -15,6 +15,7 @@
       user = "papu";
       configuration = { pkgs, config, ... }: {
 
+        system.primaryUser = user;
         nixpkgs.config.allowUnfree = true;
 
         # Enable zsh (or any other shell)
