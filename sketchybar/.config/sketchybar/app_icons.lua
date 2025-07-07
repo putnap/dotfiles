@@ -242,6 +242,7 @@ return {
 	["Reminders"] = ":reminders:",
 	["提醒事项"] = ":reminders:",
 	["Rappels"] = ":reminders:",
+	["rekordbox"] = ":rekordbox:",
 	["Replit"] = ":replit:",
 	["Rider"] = ":rider:",
 	["JetBrains Rider"] = ":rider:",
