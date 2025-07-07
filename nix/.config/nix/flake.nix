@@ -86,7 +86,7 @@
               
               function nixr() {
                 nix flake update --flake "$(readlink -f ~/.config/nix)"
-                darwin-rebuild switch --flake "$(readlink -f ~/.config/nix)#mac"
+                sudo darwin-rebuild switch --flake "$(readlink -f ~/.config/nix)#mac"
               }
             '';
           };
@@ -159,6 +159,7 @@
           NSGlobalDomain.AppleInterfaceStyle = "Dark";
           NSGlobalDomain.KeyRepeat = 2;
           NSGlobalDomain.NSWindowShouldDragOnGesture = true;
+          NSGlobalDomain."com.apple.swipescrolldirection" = false;
         };
 
         # Keyboard
