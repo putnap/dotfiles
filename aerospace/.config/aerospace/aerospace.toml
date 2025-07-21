@@ -58,19 +58,26 @@ automatically-unhide-macos-hidden-apps = false
 # [[on-window-detected]]
 # if.app-name-regex-substring = 'whatsapp'
 # run = 'layout tiling'
+[[on-window-detected]]
+if.app-name-regex-substring = 'ghostty'
+run = 'move-node-to-workspace 1'
+
+[[on-window-detected]]
+if.app-name-regex-substring = 'zen'
+run = 'move-node-to-workspace 2'
 
 [[on-window-detected]]
 if.app-name-regex-substring = 'sublime\ text'
 run = 'move-node-to-workspace 3'
 
+[[on-window-detected]]
+if.app-name-regex-substring = 'slack'
+run = 'move-node-to-workspace 4'
+
 # Media apps
 [[on-window-detected]]
 if.app-name-regex-substring = 'spotify'
-run = 'move-node-to-workspace 4'
-
-[[on-window-detected]]
-if.app-name-regex-substring = 'soundcloud'
-run = 'move-node-to-workspace 4'
+run = 'move-node-to-workspace 5'
 
 # Messenger apps
 [[on-window-detected]]
@@ -189,6 +196,7 @@ alt-2 = 'workspace 2'
 alt-3 = 'workspace 3'
 alt-4 = 'workspace 4'
 alt-5 = 'workspace 5'
+alt-6 = 'workspace 6'
 
 # See: https://nikitabobko.github.io/AeroSpace/commands#move-node-to-workspace
 alt-shift-1 = 'move-node-to-workspace 1 --focus-follows-window'
@@ -211,11 +219,12 @@ alt-b = 'exec-and-forget open -a /Applications/Zen.app'
 alt-t = 'exec-and-forget open -a /Applications/Ghostty.app'
 alt-g = 'exec-and-forget open -a /Applications/Ghostty.app'
 alt-n = 'exec-and-forget open -a /Applications/Sublime\ Text.app'
-alt-s = 'exec-and-forget open -a /Applications/Spotify.app'
-alt-x = 'exec-and-forget open -a $HOME/Applications/Chrome\ Apps.localized/SoundCloud.app'
+alt-s = 'exec-and-forget open -a /Applications/Nix\ Apps/Spotify.app'
 alt-a = 'exec-and-forget open -a /Applications/ChatGPT.app'
-alt-m = 'exec-and-forget open -a /Applications/Messenger.localized/Messenger.app'
+alt-m = 'exec-and-forget open -a /Applications/Messenger.app'
 alt-r = 'exec-and-forget open -a /Applications/rekordbox\ 7/rekordbox.app'
+alt-x = 'exec-and-forget open -a /Applications/Slack.app'
+alt-e = 'exec-and-forget open -a /Applications/Ableton\ Live\ 12\ Suite.app'
 
 # 'service' binding mode declaration.
 # See: https://nikitabobko.github.io/AeroSpace/guide#binding-modes
