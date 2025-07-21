@@ -1,6 +1,6 @@
 [[search_dirs]]
 path = "~/Documents/Projects"
-depth = 1
+depth = 2
 
 [[search_dirs]]
 path = "~/dotfiles"
