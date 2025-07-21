@@ -27,6 +27,9 @@
           {
             systemPackages = with pkgs;
               [
+                #apps
+                spotify
+
                 # Productivity terminal stuff
                 git
                 stow
@@ -57,7 +60,6 @@
                 go
                 chafa
                 cargo
-                nodejs
                 pnpm
                 yarn
                 jdk
@@ -110,17 +112,25 @@
           taps = [
             "FelixKratz/formulae"
             "nikitabobko/tap"
-            "homebrew/services"
           ];
           casks = [
             "stretchly"
             "ghostty"
+            "zen"
             "aerospace"
             "sf-symbols"
             "karabiner-elements"
             "raycast"
+            "sublime-text"
+            "postman"
+            "visual-studio-code"
+            "docker"
           ];
-          masApps = { };
+          masApps = { 
+            "Whatsapp" = 310633997;
+            "Messenger" = 1480068668;
+            "Microsoft Remote Desktop" = 1295203466;
+          };
           onActivation.cleanup = "zap";
           onActivation.autoUpdate = true;
           onActivation.upgrade = true;
@@ -152,14 +162,28 @@
           '';
 
         system.defaults = {
-          dock.autohide = true;
+          dock = {
+            autohide = true;
+            show-recents = false;
+            mru-spaces = false;
+          };
+          finder = {
+            AppleShowAllExtensions = true;
+            ShowPathbar = true;
+            ShowStatusBar = true;
+          };
           loginwindow.GuestEnabled = false;
-          finder.AppleShowAllExtensions = true;
-          NSGlobalDomain.AppleICUForce24HourTime = true;
-          NSGlobalDomain.AppleInterfaceStyle = "Dark";
-          NSGlobalDomain.KeyRepeat = 2;
-          NSGlobalDomain.NSWindowShouldDragOnGesture = true;
-          NSGlobalDomain."com.apple.swipescrolldirection" = false;
+          NSGlobalDomain = {
+            AppleICUForce24HourTime = true;
+            AppleInterfaceStyle = "Dark";
+            AppleShowAllExtensions = true;
+            KeyRepeat = 2;
+            InitialKeyRepeat = 15;
+            NSWindowShouldDragOnGesture = true;
+            "com.apple.swipescrolldirection" = false;
+            "com.apple.keyboard.fnState" = true;
+            _HIHideMenuBar = true;
+          };
         };
 
         # Keyboard
