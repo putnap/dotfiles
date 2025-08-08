@@ -1,5 +1,5 @@
 font-family = JetBrains Mono
-theme = tokyonight
+theme = catppuccin-mocha
 window-save-state = always
 window-colorspace = display-p3
 

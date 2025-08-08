@@ -108,6 +108,7 @@
             "lua"
             "switchaudio-osx"
             "nowplaying-cli"
+            "rar"
           ];
           taps = [
             "FelixKratz/formulae"
@@ -125,6 +126,7 @@
             "postman"
             "visual-studio-code"
             "docker"
+            "transmission"
           ];
           masApps = { 
             "Whatsapp" = 310633997;
