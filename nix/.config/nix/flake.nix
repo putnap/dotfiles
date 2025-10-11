@@ -52,6 +52,7 @@
                 poppler
                 btop
                 carapace
+                posting
 
                 # dev SDKs
                 python3
@@ -61,7 +62,6 @@
                 chafa
                 cargo
                 pnpm
-                yarn
                 jdk
                 zig
                 elixir
@@ -108,7 +108,7 @@
             "lua"
             "switchaudio-osx"
             "nowplaying-cli"
-            "rar"
+            "nicotine-plus"
           ];
           taps = [
             "FelixKratz/formulae"
