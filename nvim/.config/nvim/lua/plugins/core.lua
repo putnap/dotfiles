@@ -9,7 +9,7 @@ return {
                     removed = "󰍴 ",
                 },
             },
-            colorscheme = "catppuccin-mocha",
+            colorscheme = "catppuccin",
         },
     },
 }
