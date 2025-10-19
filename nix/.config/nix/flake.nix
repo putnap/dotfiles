@@ -72,6 +72,7 @@
                 kubectl
                 kubernetes-helm
                 kustomize
+                terraform
 
                 # mac setup
                 pam-reattach
@@ -109,6 +110,7 @@
             "switchaudio-osx"
             "nowplaying-cli"
             "nicotine-plus"
+            "opencode"
           ];
           taps = [
             "FelixKratz/formulae"
