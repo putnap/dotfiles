@@ -50,6 +50,9 @@ bindkey -e
 bindkey '^p' history-search-backward
 bindkey '^n' history-search-forward
 
+# Enable vi mode
+# bindkey -v
+
 # History
 HISTSIZE=10000
 HISTFILE=~/.zsh_history
@@ -78,8 +81,8 @@ zstyle ':fzf-tab:complete:__zoxide_z:*' fzf-preview 'ls --color $realpath'
 # zstyle ':fzf-tab:*' fzf-preview 'cat $realpath'
 
 # Aliases
-alias l='ls -al --color'
-alias ls='ls -al --color'
+alias l='ls -alh --color'
+alias ls='ls -alh --color'
 alias vim='nvim'
 alias v='nvim'
 alias c='clear'
@@ -110,11 +113,14 @@ eval "$(fzf --zsh)"
 eval "$(zoxide init --cmd cd zsh)"
 
 # carapace shell integration
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+
 export CARAPACE_BRIDGES='zsh,fish,bash,inshellisense' # optional
 zstyle ':completion:*' format $'\e[2;37mCompleting %d\e[m'
 source <(carapace _carapace)
 
-# shell integrations
 source <(COMPLETE=zsh tms)
 
 # Paths
@@ -138,6 +144,4 @@ function ff() {
 
 # zprof
 
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+
