@@ -53,6 +53,7 @@
                 btop
                 carapace
                 posting
+                gh
 
                 # dev SDKs
                 python3
@@ -109,7 +110,6 @@
             "lua"
             "switchaudio-osx"
             "nowplaying-cli"
-            "nicotine-plus"
             "opencode"
           ];
           taps = [
@@ -145,7 +145,7 @@
             env = pkgs.buildEnv {
               name = "system-applications";
               paths = config.environment.systemPackages;
-              pathsToLink = "/Applications";
+              pathsToLink = [ "/Applications" ];
             };
           in
           pkgs.lib.mkForce ''
