@@ -111,6 +111,7 @@ alias gwa="git-worktree-add"
 # Shell integrations
 eval "$(fzf --zsh)"
 eval "$(zoxide init --cmd cd zsh)"
+eval "$(atuin init zsh)"
 
 # carapace shell integration
 export NVM_DIR="$HOME/.nvm"

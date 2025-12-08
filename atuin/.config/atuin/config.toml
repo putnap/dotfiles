@@ -1,0 +1,8 @@
+enter_accept = false
+keymap_mode = "vim-normal"
+
+[theme]
+name = "catppuccin-mocha-mauve"
+
+[sync]
+records = true

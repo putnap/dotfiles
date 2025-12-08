@@ -54,6 +54,8 @@
                 carapace
                 posting
                 gh
+                opencode
+                atuin
 
                 # dev SDKs
                 python3
@@ -110,7 +112,6 @@
             "lua"
             "switchaudio-osx"
             "nowplaying-cli"
-            "opencode"
           ];
           taps = [
             "FelixKratz/formulae"
@@ -127,7 +128,7 @@
             "sublime-text"
             "postman"
             "visual-studio-code"
-            "docker"
+            "docker-desktop"
             "transmission"
           ];
           masApps = { 
