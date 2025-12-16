@@ -1,5 +1,5 @@
-enter_accept = false
-keymap_mode = "vim-normal"
+enter_accept = true
+keymap_mode = "vim-insert"
 
 [theme]
 name = "catppuccin-mocha-mauve"
