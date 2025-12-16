@@ -133,7 +133,6 @@
           ];
           masApps = { 
             "Whatsapp" = 310633997;
-            "Messenger" = 1480068668;
             "Microsoft Remote Desktop" = 1295203466;
           };
           onActivation.cleanup = "zap";
