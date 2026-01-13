@@ -120,6 +120,7 @@
           casks = [
             "stretchly"
             "ghostty"
+            "claude-code"
             "zen"
             "aerospace"
             "sf-symbols"
