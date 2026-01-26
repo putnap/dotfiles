@@ -201,6 +201,19 @@
         # Necessary for using flakes on this system.
         nix.settings.experimental-features = "nix-command flakes";
 
+        # Automatic garbage collection - runs weekly on Sunday at 2am
+        nix.gc = {
+          automatic = true;
+          interval = { Weekday = 0; Hour = 2; Minute = 0; };
+          options = "--delete-older-than 14d";
+        };
+
+        # Automatic store optimization - runs weekly on Sunday at 3am
+        nix.optimise = {
+          automatic = true;
+          interval = { Weekday = 0; Hour = 3; Minute = 0; };
+        };
+
         # Set Git commit hash for darwin-version.
         system.configurationRevision = self.rev or self.dirtyRev or null;
 
