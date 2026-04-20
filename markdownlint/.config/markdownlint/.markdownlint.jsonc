@@ -1,0 +1,14 @@
+{
+  // Line length
+  "MD013": false,
+  // Allow inline HTML (e.g. <br>, <details>, <sup>)
+  "MD033": false,
+  // First line doesn't have to be a top-level heading
+  "MD041": false,
+  // Allow multiple headings with the same content (changelogs, FAQs)
+  "MD024": false,
+  // Allow emphasis used as heading (e.g. **bold** on its own line)
+  "MD036": false,
+  // Allow multiple blank lines
+  "MD012": false
+}
