@@ -65,9 +65,12 @@
                 chafa
                 cargo
                 pnpm
-                jdk
+                jdk17
                 zig
                 elixir
+
+                # mobile dev
+                android-tools # adb, fastboot
 
                 # cloud tools
                 google-cloud-sdk
@@ -112,12 +115,14 @@
             "lua"
             "switchaudio-osx"
             "nowplaying-cli"
+            "PeonPing/tap/peon-ping"
           ];
           taps = [
             "FelixKratz/formulae"
             "nikitabobko/tap"
           ];
           casks = [
+            "android-studio"
             "stretchly"
             "ghostty"
             "claude-code"
