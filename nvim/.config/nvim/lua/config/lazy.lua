@@ -14,6 +14,15 @@ if not (vim.uv or vim.loop).fs_stat(lazypath) then
 end
 vim.opt.rtp:prepend(lazypath)
 
+-- Detect if a session will be restored to disable dashboard
+local function has_session()
+    if vim.fn.argc(-1) > 0 then return false end
+    local session_dir = vim.fn.stdpath("state") .. "/sessions/"
+    local name = vim.fn.getcwd():gsub("[\\/:]+", "%%")
+    return (vim.uv or vim.loop).fs_stat(session_dir .. name .. ".vim") ~= nil
+end
+vim.g._restore_session = has_session()
+
 require("lazy").setup({
     spec = {
         -- add LazyVim and import its plugins
@@ -30,7 +39,7 @@ require("lazy").setup({
         version = false, -- always use the latest git commit
         -- version = "*", -- try installing the latest stable version for plugins that support semver
     },
-    install = { colorscheme = { "catppuccin" } },
+    install = { colorscheme = { "catppuccin-nvim" } },
     checker = {
         enabled = true, -- check for plugin updates periodically
         notify = false, -- notify on update
@@ -71,8 +80,9 @@ vim.api.nvim_create_autocmd({ "VimEnter" }, {
             end
         end
         if vim.fn.argc() == 0 and not vim.g.started_with_stdin then
-            vim.notify("Restoring session...")
-            require("persistence").load()
+            vim.schedule(function()
+                require("persistence").load()
+            end)
         else
             require("persistence").stop()
         end

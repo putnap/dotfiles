@@ -9,7 +9,7 @@ return {
                     removed = "󰍴 ",
                 },
             },
-            colorscheme = "catppuccin",
+            colorscheme = "catppuccin-nvim",
         },
     },
 }

@@ -1,6 +1,7 @@
 return {
     "folke/snacks.nvim",
     opts = {
+        dashboard = { enabled = not vim.g._restore_session },
         picker = {
             sources = {
                 buffers = {
