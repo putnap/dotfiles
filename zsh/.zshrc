@@ -49,6 +49,12 @@ export EDITOR='nvim'
 bindkey -e
 bindkey '^p' history-search-backward
 bindkey '^n' history-search-forward
+# ctrl+v pastes from system clipboard (replaces zsh's quoted-insert)
+function paste-from-clipboard() {
+  LBUFFER+="$(pbpaste)"
+}
+zle -N paste-from-clipboard
+bindkey '^V' paste-from-clipboard
 
 # Enable vi mode
 # bindkey -v
