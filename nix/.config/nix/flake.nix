@@ -117,7 +117,7 @@
             "borders"
             "lua"
             "switchaudio-osx"
-            "nowplaying-cli"
+            "media-control"
             "PeonPing/tap/peon-ping"
             "tnk-studio/tools/lazykube"
           ];

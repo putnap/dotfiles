@@ -1,14 +1,26 @@
 local icons = require("icons")
 local colors = require("colors")
 
-local whitelist = { ["Spotify"] = true, ["SoundCloud"] = true, ["Music"] = true }
+-- Now-playing source.
+-- macOS 15.4+ gated the MediaRemote notification API, so sketchybar's built-in
+-- `media_change` event no longer fires (SketchyBar issue #708, still open). The
+-- ACTIVE path below streams events from `media-control` (mediaremote-adapter)
+-- and forwards them as a custom `media_update` event; the widget shows whatever
+-- is playing (filter on env.APP / bundleIdentifier to restrict it).
+--
+-- REVERT (if #708 is ever fixed natively): comment the "media-control path"
+-- block, uncomment the "native media_change path" block, and set the cover
+-- image scale back to 0.80. (Popup buttons call `media-control`; switch them to
+-- `nowplaying-cli` only if you also drop media-control.)
 
 local media_cover = sbar.add("item", {
 	position = "right",
 	background = {
 		image = {
+			-- media-control path: ~100px file from media_stream.sh, scale 0.30.
+			-- native media_change path: built-in artwork, use scale = 0.80.
 			string = "media.artwork",
-			scale = 0.80,
+			scale = 0.30,
 		},
 		color = colors.transparent,
 	},
@@ -57,19 +69,19 @@ sbar.add("item", {
 	position = "popup." .. media_cover.name,
 	icon = { string = icons.media.back },
 	label = { drawing = false },
-	click_script = "nowplaying-cli previous",
+	click_script = "media-control previous-track",
 })
 sbar.add("item", {
 	position = "popup." .. media_cover.name,
 	icon = { string = icons.media.play_pause },
 	label = { drawing = false },
-	click_script = "nowplaying-cli togglePlayPause",
+	click_script = "media-control toggle-play-pause",
 })
 sbar.add("item", {
 	position = "popup." .. media_cover.name,
 	icon = { string = icons.media.forward },
 	label = { drawing = false },
-	click_script = "nowplaying-cli next",
+	click_script = "media-control next-track",
 })
 
 local interrupt = 0
@@ -87,22 +99,63 @@ local function animate_detail(detail)
 	end)
 end
 
-media_cover:subscribe("media_change", function(env)
-	if whitelist[env.INFO.app] then
-		local drawing = (env.INFO.state == "playing")
-		media_artist:set({ drawing = drawing, label = env.INFO.artist })
-		media_title:set({ drawing = drawing, label = env.INFO.title })
-		media_cover:set({ drawing = drawing })
+-- === media-control path (ACTIVE) ===========================================
+-- Now-playing changes arrive as a custom `media_update` event, triggered by
+-- helpers/media_stream.sh (media-control stream). Comment this whole block to
+-- fall back to the native path below.
+sbar.add("event", "media_update")
 
-		if drawing then
-			animate_detail(true)
-			interrupt = interrupt + 1
-			sbar.delay(5, animate_detail)
-		else
-			media_cover:set({ popup = { drawing = false } })
-		end
+local art_path = nil
+media_cover:subscribe("media_update", function(env)
+	local drawing = (env.PLAYING == "true")
+	if env.ART and env.ART ~= "" then
+		art_path = env.ART
+	end
+
+	media_artist:set({ drawing = drawing, label = env.ARTIST or "" })
+	media_title:set({ drawing = drawing, label = env.TITLE or "" })
+
+	local cover = { drawing = drawing }
+	if drawing and art_path then
+		cover.background = { image = { string = art_path } }
+	end
+	media_cover:set(cover)
+
+	if drawing then
+		animate_detail(true)
+		interrupt = interrupt + 1
+		sbar.delay(5, animate_detail)
+	else
+		media_cover:set({ popup = { drawing = false } })
 	end
 end)
+
+-- Launch the media-control stream provider that feeds the event above. The
+-- helper self-replaces any prior instance via its pidfile (no broad pkill).
+local home = os.getenv("HOME") or ("/Users/" .. os.getenv("USER"))
+os.execute("(" .. home .. "/.config/sketchybar/helpers/media_stream.sh >/dev/null 2>&1 &)")
+-- === end media-control path =================================================
+
+-- === native media_change path (DISABLED — re-enable if SketchyBar #708 lands) ===
+-- Uncomment this block AND comment the media-control path above; also set the
+-- cover image scale back to 0.80. Needs no helper / media-control.
+-- local whitelist = { ["Spotify"] = true, ["SoundCloud"] = true, ["Music"] = true }
+-- media_cover:subscribe("media_change", function(env)
+-- 	if whitelist[env.INFO.app] then
+-- 		local drawing = (env.INFO.state == "playing")
+-- 		media_artist:set({ drawing = drawing, label = env.INFO.artist })
+-- 		media_title:set({ drawing = drawing, label = env.INFO.title })
+-- 		media_cover:set({ drawing = drawing })
+-- 		if drawing then
+-- 			animate_detail(true)
+-- 			interrupt = interrupt + 1
+-- 			sbar.delay(5, animate_detail)
+-- 		else
+-- 			media_cover:set({ popup = { drawing = false } })
+-- 		end
+-- 	end
+-- end)
+-- === end native media_change path ===========================================
 
 media_cover:subscribe("mouse.entered", function()
 	interrupt = interrupt + 1
