@@ -54,12 +54,12 @@
                 carapace
                 posting
                 gh
+                gh-dash
                 opencode
                 atuin
 
                 # dev SDKs
                 python3
-                pipx
                 uv
                 go
                 chafa
@@ -73,7 +73,9 @@
                 android-tools # adb, fastboot
 
                 # cloud tools
-                google-cloud-sdk
+                (google-cloud-sdk.withExtraComponents [
+                  google-cloud-sdk.components.gke-gcloud-auth-plugin
+                ])
                 minikube
                 kubectl
                 kubernetes-helm
@@ -95,6 +97,7 @@
               
               function nixr() {
                 nix flake update --flake "$(readlink -f ~/.config/nix)"
+                brew update
                 sudo darwin-rebuild switch --flake "$(readlink -f ~/.config/nix)#mac"
               }
             '';
@@ -116,6 +119,7 @@
             "switchaudio-osx"
             "nowplaying-cli"
             "PeonPing/tap/peon-ping"
+            "tnk-studio/tools/lazykube"
           ];
           taps = [
             "FelixKratz/formulae"
@@ -125,7 +129,7 @@
             "android-studio"
             "stretchly"
             "ghostty"
-            "claude-code"
+            "claude-code@latest"
             "zen"
             "aerospace"
             "sf-symbols"
@@ -137,13 +141,18 @@
             "docker-desktop"
             "transmission"
           ];
-          masApps = { 
-            "Whatsapp" = 310633997;
-            "Microsoft Remote Desktop" = 1295203466;
+          masApps = {
+            "WhatsApp" = 310633997;
+            "Windows App" = 1295203466;
           };
           onActivation.cleanup = "zap";
-          onActivation.autoUpdate = true;
+          onActivation.autoUpdate = false;
           onActivation.upgrade = true;
+          # Homebrew 6.0 (June 2026) requires explicit trust for non-official taps.
+          # nix-darwin's module can't yet emit per-tap `trusted: true`, so restore the
+          # pre-6.0 behavior during activation. NOTE: transition flag, slated for removal
+          # upstream — revisit once nix-darwin supports declaring tap trust.
+          onActivation.extraEnv.HOMEBREW_NO_REQUIRE_TAP_TRUST = "1";
         };
 
         system.activationScripts.applications.text =
