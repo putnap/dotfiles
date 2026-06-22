@@ -209,6 +209,19 @@
         system.keyboard.enableKeyMapping = true;
         system.keyboard.remapCapsLockToEscape = true;
 
+        # Custom keyboard layouts: copy real files into /Library/Keyboard Layouts.
+        # macOS doesn't reliably load symlinked layouts, so we copy (not link).
+        # The bundle is vendored under ./keyboard-layouts and MUST stay git-tracked
+        # or the flake won't see it. After a rebuild you still have to log out/in
+        # and enable "Lithuanian - Numeric" in System Settings > Keyboard >
+        # Text Input > Input Sources (the enabled-sources list isn't declarative).
+        system.activationScripts.postActivation.text = ''
+          echo "installing custom keyboard layouts..." >&2
+          install -d "/Library/Keyboard Layouts"
+          rm -rf "/Library/Keyboard Layouts/lithuanian-numeric.bundle"
+          cp -R "${./keyboard-layouts/lithuanian-numeric.bundle}" "/Library/Keyboard Layouts/lithuanian-numeric.bundle"
+        '';
+
         # Add ability to used TouchID for sudo authentication
         security.pam.services.sudo_local.touchIdAuth = true;
 
