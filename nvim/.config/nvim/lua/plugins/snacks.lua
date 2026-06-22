@@ -81,11 +81,6 @@ return {
                         ["L"] = { "preview_scroll_right", mode = { "i", "n" } },
                         ["<c-j>"] = { "", mode = { "i", "n" } },
                         ["<c-k>"] = { "", mode = { "i", "n" } },
-                        -- ctrl+v: paste from system clipboard (overrides default vsplit)
-                        ["<c-v>"] = {
-                            function() vim.api.nvim_paste(vim.fn.system("pbpaste"), false, -1) end,
-                            mode = { "i", "n" },
-                        },
                     },
                 },
             },

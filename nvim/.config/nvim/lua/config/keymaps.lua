@@ -13,12 +13,6 @@ vim.keymap.set({ "n", "v" }, "<leader>y", [["+y]], { desc = "Yank to system clip
 vim.keymap.set("n", "<leader>Y", [["+Y]], { desc = "Yank line wise to system clipboard" })
 vim.keymap.set({ "n", "v" }, "<leader>d", '"_d', { desc = "Delete to void register" })
 
--- ctrl+v pastes from system clipboard via pbpaste. Visual-block is still on <C-q>.
-local function paste() vim.api.nvim_paste(vim.fn.system("pbpaste"), false, -1) end
-vim.keymap.set({ "n", "i" }, "<C-v>", paste, { desc = "Paste from clipboard" })
-vim.keymap.set("x", "<C-v>", function() vim.cmd('normal! "_d') paste() end, { desc = "Paste from clipboard" })
-vim.keymap.set("c", "<C-v>", function() return (vim.fn.system("pbpaste"):gsub("\n", "")) end, { expr = true, desc = "Paste from clipboard" })
-
 vim.keymap.set(
     "n",
     "<C-Left>",
