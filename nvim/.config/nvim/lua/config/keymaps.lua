@@ -53,6 +53,19 @@ vim.keymap.set(
     { desc = "Go to Right Window", remap = true }
 )
 
+-- Navigate in terminal mode too, so <C-hjkl> works inside terminals like
+-- lazygit (snacks float). tmux forwards the keys to nvim, but the maps above
+-- are normal-mode only, so without this they leak into the terminal program.
+local tmux_dirs = { h = "left", j = "bottom", k = "top", l = "right" }
+for key, dir in pairs(tmux_dirs) do
+    vim.keymap.set(
+        "t",
+        "<C-" .. key .. ">",
+        ([[<cmd>lua require("tmux").move_%s()<cr>]]):format(dir),
+        { desc = "Go " .. dir .. " window (term)" }
+    )
+end
+
 vim.keymap.set("n", "<leader>x", "<cmd>!chmod +x %<CR>", { silent = true, desc = "Make current file executable" })
 
 vim.keymap.set("n", "<C-a>", "gg0vG$", { desc = "Select all text" })

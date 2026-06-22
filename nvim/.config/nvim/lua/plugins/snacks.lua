@@ -2,6 +2,20 @@ return {
     "folke/snacks.nvim",
     opts = {
         dashboard = { enabled = not vim.g._restore_session },
+        terminal = {
+            win = {
+                keys = {
+                    -- LazyVim maps <C-hjkl> here to nvim-only nav (term_nav), which
+                    -- shadows the global terminal-mode tmux nav. Disable it so the
+                    -- global maps in keymaps.lua win -- same idea as the explorer
+                    -- keys below deferring to the global normal-mode maps.
+                    nav_h = false,
+                    nav_j = false,
+                    nav_k = false,
+                    nav_l = false,
+                },
+            },
+        },
         picker = {
             sources = {
                 buffers = {
