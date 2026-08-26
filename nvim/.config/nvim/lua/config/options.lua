@@ -7,3 +7,4 @@ vim.g.root_spec = { "cwd" }
 vim.opt.tabstop = 2
 vim.opt.softtabstop = 2
 vim.opt.shiftwidth = 2
+vim.g.lazyvim_ts_lsp = "tsgo"
