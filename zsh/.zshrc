@@ -26,7 +26,6 @@ zinit light Aloxaf/fzf-tab
 zinit snippet OMZL::git.zsh
 zinit snippet OMZP::git
 zinit snippet OMZP::sudo
-zinit snippet OMZP::archlinux
 zinit snippet OMZP::docker
 zinit snippet OMZP::docker-compose
 zinit snippet OMZP::kubectl
@@ -50,6 +49,18 @@ export EDITOR='nvim'
 bindkey -e
 bindkey '^p' history-search-backward
 bindkey '^n' history-search-forward
+
+# Word motion on both routes: Alt+arrows (macOS-native) and Ctrl+arrows (PC).
+# Ghostty sends these as CSI sequences; zsh only knows ^[b/^[f out of the box.
+bindkey '^[[1;3D' backward-word
+bindkey '^[[1;3C' forward-word
+bindkey '^[[1;5D' backward-word
+bindkey '^[[1;5C' forward-word
+
+# Ctrl+S is save everywhere else. stty -ixon stops it freezing the terminal;
+# unbinding it stops ZLE answering with forward-i-search instead.
+stty -ixon
+bindkey -r '^S'
 
 # Enable vi mode
 # bindkey -v
@@ -120,12 +131,16 @@ eval "$(zoxide init --cmd cd zsh)"
 eval "$(atuin init zsh)"
 
 # carapace shell integration
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+# export NVM_DIR="$HOME/.nvm"
+# [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+# [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+. "$HOME/.vite-plus/env"
 
 export CARAPACE_BRIDGES='zsh,fish,bash,inshellisense' # optional
 zstyle ':completion:*' format $'\e[2;37mCompleting %d\e[m'
+# zsh's native completions beat carapace's for these, and carapace's pre-quoted
+# matches (compadd -Q) break under fzf-tab on paths with spaces (fzf-tab#503).
+export CARAPACE_EXCLUDES='cat,ls,cp,mv,rm,ln,mkdir,touch,head,tail,less,more,open,nvim,vim,git,docker,docker-compose,kubectl'
 source <(carapace _carapace)
 
 source <(COMPLETE=zsh tms)
@@ -176,6 +191,7 @@ zle -N edit-command-line
 bindkey '^[^M' edit-command-line
 
 bindkey '^z' undo
+bindkey '^Y' redo
 bindkey ' ' magic-space
 
 # Hooks
@@ -201,12 +217,21 @@ function auto_venv() {
   done
 }
 
-function auto_nvm() {
-  [[ -f .nvmrc ]] && nvm use
-}
+# function auto_nvm() {
+#   [[ -f .nvmrc ]] && nvm use
+# }
 
 # Register them all
 add-zsh-hook chpwd auto_venv
-add-zsh-hook chpwd auto_nvm
+# add-zsh-hook chpwd auto_nvm
+
+
+# pnpm
+export PNPM_HOME="/Users/papu/Library/pnpm"
+case ":$PATH:" in
+  *":$PNPM_HOME/bin:"*) ;;
+  *) export PATH="$PNPM_HOME/bin:$PATH" ;;
+esac
+# pnpm end
 
 # zprof

@@ -12,3 +12,16 @@ adjust-cell-height = 20%
 keybind = global:ctrl+grave_accent=toggle_quick_terminal
 keybind = cmd+c=text:\x03
 keybind = ctrl+v=paste_from_clipboard
+
+# Word motion. Ghostty's defaults send Esc+letter (esc:b / esc:f), which zsh
+# reads as ^[b but Neovim reads as two keystrokes -- Esc then `f` is
+# find-character, so Alt+Right hung while Alt+Left happened to work.
+keybind = alt+arrow_left=csi:1;3D
+keybind = alt+arrow_right=csi:1;3C
+# Ctrl+Backspace as ^W, which zsh and every readline TUI already delete-word on.
+keybind = ctrl+backspace=text:\x17
+# Ghostty binds these to its own tabs by default. herdr provides the tabs here
+# and Ghostty's own are unused, so keep them from firing by accident. herdr
+# cannot use them either -- the terminal does not deliver ctrl+tab.
+keybind = ctrl+tab=unbind
+keybind = ctrl+shift+tab=unbind
