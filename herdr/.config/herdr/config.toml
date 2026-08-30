@@ -4,6 +4,12 @@
 [theme]
 name = "catppuccin"
 
+# Catppuccin's default selection_bg (#313244) sits too close to sidebar_bg
+# (#181825) to read as a highlight. Cursor row and focused row stay two steps apart.
+[theme.custom]
+selection_bg = "#45475a"
+active_row_bg = "#292a3d"
+
 [keys]
 prefix = "ctrl+\\"
 
@@ -204,11 +210,9 @@ description = "resize right (nvim/herdr)"
 
 [ui]
 show_agent_labels_on_pane_borders = true
-agent_panel_sort = "spaces"
+agent_panel_sort = "priority"
 tab_bar_right = [
-    { type = "command", command = "~/.config/herdr/scripts/workspace-status.sh", interval_seconds = 1, timeout_seconds = 2 },
     { type = "zoom" },
-    { type = "datetime", format = "%H:%M" },
 ]
 tab_bar_right_separator = " │ "
 
