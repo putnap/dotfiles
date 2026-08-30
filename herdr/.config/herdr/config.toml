@@ -1,0 +1,173 @@
+# Keybindings mirror ~/.config/tmux/tmux.conf so muscle memory carries over.
+# Validate after editing: herdr config check   Apply live: prefix+r
+
+[theme]
+name = "catppuccin"
+
+[keys]
+prefix = "ctrl+\\"
+
+# tmux `bind r source-file`. resize_mode moves off prefix+r to make room.
+reload_config = ["prefix+shift+r", "prefix+r"]
+resize_mode = "prefix+ctrl+r"
+
+# tmux defaults that herdr puts elsewhere. Both bindings stay live.
+rename_tab = ["prefix+shift+t", "prefix+,"]
+rename_workspace = ["prefix+shift+w", "prefix+$"]
+close_tab = ["prefix+shift+x", "prefix+&"]
+swap_pane_up = ["prefix+shift+k", "prefix+{"]
+swap_pane_down = ["prefix+shift+j", "prefix+}"]
+last_pane = "prefix+;"
+cycle_pane_next = ["prefix+tab", "prefix+o"]
+
+# tmux detaches on prefix+d and shows pane numbers on prefix+q; leaving detach
+# on prefix+q would detach on a keystroke that is harmless in tmux.
+detach = "prefix+d"
+
+# prefix+o and prefix+s go to the tmux meanings above, so herdr's own actions move.
+# open_notification_target only fires while an in-app toast is visible, and
+# ui.toast.delivery = "terminal" means there never is one; attention.jump below
+# is the keyboard equivalent that actually works.
+open_notification_target = "prefix+shift+o"
+settings = "prefix+ctrl+s"
+# Agents create worktrees with plain `git worktree add`, so herdr never opens
+# them. open_worktree lists every checkout git knows about, opened or not --
+# that is how an agent's worktree gets adopted (and picks up the layout hook).
+# Built-in open_worktree is only offered on a parent Git workspace row, so it
+# does nothing from inside a worktree. worktree.open below works from either.
+open_worktree = ""
+# Not prefix+ctrl+shift+g: that is one shift key from open_worktree above, too
+# close for something that deletes a checkout. herdr confirms either way.
+remove_worktree = "prefix+alt+g"
+# Superseded by the prompted popup below, which also asks for base and path.
+new_worktree = ""
+
+# tmux windows -> herdr tabs: S-Left/S-Right and M-H/M-L.
+previous_tab = ["prefix+p", "shift+left", "alt+shift+h"]
+next_tab = ["prefix+n", "shift+right", "alt+shift+l"]
+
+# Shift+arrows are the tmux window-switching muscle memory. Horizontal keeps
+# meaning "tab" (they sit in a horizontal bar); vertical means "workspace"
+# (they stack vertically in the sidebar).
+previous_workspace = "shift+up"
+next_workspace = "shift+down"
+
+# Direct jumps, mirroring prefix+1..9 for tabs.
+switch_workspace = "prefix+shift+1..9"
+focus_agent = "prefix+alt+1..9"
+
+# Walk the agent panel; with agent_panel_sort = "spaces" this follows sidebar
+# order. prefix+shift+a goes to the attention jump below instead, which is the
+# one you actually reach for.
+next_agent = "prefix+a"
+previous_agent = ""
+
+# tmux `bind |` / `bind -`. prefix+minus is already the herdr default.
+split_vertical = ["prefix+v", "prefix+|"]
+
+# tmux `bind C-o` / `bind s` -> the sesh picker (see [[keys.command]] below).
+# prefix+w keeps herdr's own workspace picker.
+
+# Jump to whichever agent most recently blocked or finished.
+[[keys.command]]
+key = ["prefix+shift+a", "ctrl+alt+a"]
+type = "plugin_action"
+command = "attention.jump"
+description = "jump to the agent needing attention"
+
+[[keys.command]]
+key = ["prefix+s", "prefix+ctrl+o"]
+type = "plugin_action"
+command = "sessionizer.open"
+description = "workspace picker"
+
+# Worktrees. Our popup also asks for a base ref; herdr's built-in dialog asks
+# only for a branch, so it keeps a key of its own rather than being shadowed.
+[[keys.command]]
+key = "prefix+shift+g"
+type = "plugin_action"
+command = "worktree.new"
+description = "new git worktree (prompted)"
+
+[[keys.command]]
+key = "prefix+ctrl+g"
+type = "plugin_action"
+command = "worktree.open"
+description = "open an existing git worktree"
+
+# tmux `bind f` / `bind F` -> agent-fork.
+[[keys.command]]
+key = "prefix+f"
+type = "shell"
+command = "~/.config/herdr/scripts/agent-fork.sh pane"
+description = "fork agent into a pane"
+
+[[keys.command]]
+key = "prefix+shift+f"
+type = "shell"
+command = "~/.config/herdr/scripts/agent-fork.sh tab"
+description = "fork agent into a tab"
+
+# smart-splits (local plugin): ctrl+hjkl and ctrl+arrows treat nvim splits and
+# herdr panes as one surface. ctrl+arrows match tmux.conf's resize bindings.
+
+[[keys.command]]
+key = "ctrl+h"
+type = "plugin_action"
+command = "smart-splits.nav-left"
+description = "navigate left (nvim/herdr)"
+
+[[keys.command]]
+key = "ctrl+j"
+type = "plugin_action"
+command = "smart-splits.nav-down"
+description = "navigate down (nvim/herdr)"
+
+[[keys.command]]
+key = "ctrl+k"
+type = "plugin_action"
+command = "smart-splits.nav-up"
+description = "navigate up (nvim/herdr)"
+
+[[keys.command]]
+key = "ctrl+l"
+type = "plugin_action"
+command = "smart-splits.nav-right"
+description = "navigate right (nvim/herdr)"
+
+[[keys.command]]
+key = "ctrl+left"
+type = "plugin_action"
+command = "smart-splits.resize-left"
+description = "resize left (nvim/herdr)"
+
+[[keys.command]]
+key = "ctrl+down"
+type = "plugin_action"
+command = "smart-splits.resize-down"
+description = "resize down (nvim/herdr)"
+
+[[keys.command]]
+key = "ctrl+up"
+type = "plugin_action"
+command = "smart-splits.resize-up"
+description = "resize up (nvim/herdr)"
+
+[[keys.command]]
+key = "ctrl+right"
+type = "plugin_action"
+command = "smart-splits.resize-right"
+description = "resize right (nvim/herdr)"
+
+[ui]
+show_agent_labels_on_pane_borders = true
+agent_panel_sort = "spaces"
+tab_bar_right = [
+    { type = "command", command = "~/.config/herdr/scripts/workspace-status.sh", interval_seconds = 1, timeout_seconds = 2 },
+    { type = "zoom" },
+    { type = "datetime", format = "%H:%M" },
+]
+tab_bar_right_separator = " │ "
+
+[ui.toast]
+delivery = "terminal"

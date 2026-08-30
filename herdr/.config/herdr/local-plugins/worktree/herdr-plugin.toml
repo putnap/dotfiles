@@ -1,0 +1,49 @@
+# Worktree flow. herdr already creates worktree-backed workspaces and groups them
+# in the sidebar; this adds prompts that follow the repo's own conventions, an
+# adopt-existing picker that works from inside a worktree, and the nvim-left
+# layout applied however the worktree arrived.
+id = "worktree"
+name = "Worktree flow"
+version = "0.1.0"
+min_herdr_version = "0.7.0"
+description = "Prompted git worktree creation, adoption of agent-made worktrees, and an nvim-left layout"
+platforms = ["macos", "linux"]
+
+# Actions are run by the server WITHOUT a tty, so they cannot prompt or run fzf
+# themselves. They open the overlay panes below, which are normal panes with a
+# real pty. (A `popup` is not enough: its stdout is not a tty, so fzf draws
+# nothing and hangs.) Same pattern as jt.command-palette and herdr-fzf-url.
+[[actions]]
+id = "new"
+title = "New git worktree"
+contexts = ["workspace"]
+command = ["bash", "scripts/open-overlay.sh", "new"]
+
+[[actions]]
+id = "open"
+title = "Open an existing git worktree"
+contexts = ["workspace"]
+command = ["bash", "scripts/open-overlay.sh", "open"]
+
+[[panes]]
+id = "new"
+title = "New worktree"
+placement = "overlay"
+command = ["bash", "-c", "exec \"$HERDR_PLUGIN_ROOT/scripts/new-worktree.sh\""]
+
+[[panes]]
+id = "open"
+title = "Open worktree"
+placement = "overlay"
+command = ["bash", "-c", "exec \"$HERDR_PLUGIN_ROOT/scripts/open-worktree.sh\""]
+
+# Fires for the keybinding, `herdr worktree create`, and the built-in dialog alike.
+[[events]]
+on = "worktree.created"
+command = ["bash", "scripts/layout.sh"]
+
+# Adopting a checkout an agent made outside herdr should land in the same layout.
+# layout.sh skips workspaces already in use.
+[[events]]
+on = "worktree.opened"
+command = ["bash", "scripts/layout.sh"]

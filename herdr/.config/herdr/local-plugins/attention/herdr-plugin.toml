@@ -1,0 +1,15 @@
+# Jump to the agent that most recently wants you. herdr's own
+# open_notification_target only works while a toast is on screen, and with
+# ui.toast.delivery = "terminal" there is never an in-app toast to target.
+id = "attention"
+name = "Agent attention"
+version = "0.1.0"
+min_herdr_version = "0.7.0"
+description = "Focus the agent that most recently became blocked or done"
+platforms = ["macos", "linux"]
+
+[[actions]]
+id = "jump"
+title = "Jump to the agent needing attention"
+contexts = ["global"]
+command = ["bash", "scripts/jump.sh"]

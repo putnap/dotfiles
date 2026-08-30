@@ -1,0 +1,57 @@
+# herdr side of smart-splits.nvim. Upstream ships navigation actions only, so we
+# own both halves here rather than splitting one concern across two plugins.
+# The Neovim side stays upstream (mrjones2014/smart-splits.nvim via lazy).
+id = "smart-splits"
+name = "smart-splits"
+version = "0.1.0"
+min_herdr_version = "0.7.0"
+description = "Ctrl+hjkl navigation and ctrl+arrow resize across herdr panes and Vim/Neovim splits"
+platforms = ["macos", "linux"]
+
+[[actions]]
+id = "nav-left"
+title = "Navigate left (Vim/herdr)"
+contexts = ["global"]
+command = ["bash", "scripts/smart-splits.sh", "nav", "left"]
+
+[[actions]]
+id = "nav-down"
+title = "Navigate down (Vim/herdr)"
+contexts = ["global"]
+command = ["bash", "scripts/smart-splits.sh", "nav", "down"]
+
+[[actions]]
+id = "nav-up"
+title = "Navigate up (Vim/herdr)"
+contexts = ["global"]
+command = ["bash", "scripts/smart-splits.sh", "nav", "up"]
+
+[[actions]]
+id = "nav-right"
+title = "Navigate right (Vim/herdr)"
+contexts = ["global"]
+command = ["bash", "scripts/smart-splits.sh", "nav", "right"]
+
+[[actions]]
+id = "resize-left"
+title = "Resize left (Vim/herdr)"
+contexts = ["global"]
+command = ["bash", "scripts/smart-splits.sh", "resize", "left"]
+
+[[actions]]
+id = "resize-down"
+title = "Resize down (Vim/herdr)"
+contexts = ["global"]
+command = ["bash", "scripts/smart-splits.sh", "resize", "down"]
+
+[[actions]]
+id = "resize-up"
+title = "Resize up (Vim/herdr)"
+contexts = ["global"]
+command = ["bash", "scripts/smart-splits.sh", "resize", "up"]
+
+[[actions]]
+id = "resize-right"
+title = "Resize right (Vim/herdr)"
+contexts = ["global"]
+command = ["bash", "scripts/smart-splits.sh", "resize", "right"]

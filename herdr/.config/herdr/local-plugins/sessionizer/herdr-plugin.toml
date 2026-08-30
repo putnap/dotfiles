@@ -1,0 +1,23 @@
+# tms, rebuilt on herdr. Replaces fullerzz.sesh, which spawned a 7.8MB Go binary
+# twice per open (~150ms warm, ~700ms cold) and discovered workspaces from the
+# whole zoxide history, needing a generated denylist to stay readable.
+# This scans repo roots like tms did and renders in fzf: ~90ms, no denylist.
+id = "sessionizer"
+name = "Sessionizer"
+version = "0.1.0"
+min_herdr_version = "0.7.0"
+description = "tms-style workspace picker: open herdr workspaces plus every git repo under the configured roots"
+platforms = ["macos", "linux"]
+
+# Actions have no tty, so they hand off to an overlay pane, which does.
+[[actions]]
+id = "open"
+title = "Workspace picker"
+contexts = ["workspace"]
+command = ["bash", "scripts/open-overlay.sh"]
+
+[[panes]]
+id = "picker"
+title = "Workspaces"
+placement = "overlay"
+command = ["bash", "-c", "exec \"$HERDR_PLUGIN_ROOT/scripts/picker.sh\""]
