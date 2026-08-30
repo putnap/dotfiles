@@ -97,6 +97,10 @@ if.app-name-regex-substring = 'finder'
 run = 'layout floating'
 
 [[on-window-detected]]
+if.app-name-regex-substring = 'longplay'
+run = ['move-node-to-workspace 4', 'layout floating']
+
+[[on-window-detected]]
 if.app-name-regex-substring = 'camera'
 run = 'layout floating'
 
@@ -212,7 +216,6 @@ alt-shift-enter = 'mode apps'
 alt-w = 'exec-and-forget open -a /Applications/WhatsApp.app'
 alt-b = 'exec-and-forget open -a /Applications/Zen.app'
 alt-t = 'exec-and-forget open -a /Applications/Ghostty.app'
-alt-g = 'exec-and-forget open -a /Applications/Ghostty.app'
 alt-n = 'exec-and-forget open -a /Applications/Sublime\ Text.app'
 alt-s = 'exec-and-forget open -a /Applications/Nix\ Apps/Spotify.app'
 alt-a = 'exec-and-forget open -a /Applications/ChatGPT.app'
