@@ -13,57 +13,27 @@ vim.keymap.set({ "n", "v" }, "<leader>y", [["+y]], { desc = "Yank to system clip
 vim.keymap.set("n", "<leader>Y", [["+Y]], { desc = "Yank line wise to system clipboard" })
 vim.keymap.set({ "n", "v" }, "<leader>d", '"_d', { desc = "Delete to void register" })
 
-vim.keymap.set(
-    "n",
-    "<C-Left>",
-    [[<cmd>lua require("tmux").resize_left()<cr>]],
-    { remap = true, desc = "Vertical Window size increase" }
-)
-vim.keymap.set(
-    "n",
-    "<C-Right>",
-    [[<cmd>lua require("tmux").resize_right()<cr>]],
-    { remap = true, desc = "Vertical Window size decrease" }
-)
-vim.keymap.set(
-    "n",
-    "<C-Down>",
-    [[<cmd>lua require("tmux").resize_bottom()<cr>]],
-    { remap = true, desc = "Horizontal Window size increase" }
-)
-vim.keymap.set(
-    "n",
-    "<C-Up>",
-    [[<cmd>lua require("tmux").resize_top()<cr>]],
-    { remap = true, desc = "Horizontal Window size decrease" }
-)
+-- smart-splits: <C-hjkl> and <C-arrows> treat nvim splits and tmux/herdr panes
+-- as one surface. The multiplexer side forwards the keys here when nvim owns
+-- the pane, and smart-splits calls back out at a split edge.
+local smart_splits = {
+    ["<C-h>"] = { "move_cursor_left", "Go to Left Window" },
+    ["<C-j>"] = { "move_cursor_down", "Go to Lower Window" },
+    ["<C-k>"] = { "move_cursor_up", "Go to Upper Window" },
+    ["<C-l>"] = { "move_cursor_right", "Go to Right Window" },
+    ["<C-Left>"] = { "resize_left", "Vertical Window size increase" },
+    ["<C-Right>"] = { "resize_right", "Vertical Window size decrease" },
+    ["<C-Down>"] = { "resize_down", "Horizontal Window size increase" },
+    ["<C-Up>"] = { "resize_up", "Horizontal Window size decrease" },
+}
 
-vim.keymap.set("n", "<C-h>", [[<cmd>lua require("tmux").move_left()<cr>]], { desc = "Go to Left Window", remap = true })
-vim.keymap.set(
-    "n",
-    "<C-j>",
-    [[<cmd>lua require("tmux").move_bottom()<cr>]],
-    { desc = "Go to Lower Window", remap = true }
-)
-vim.keymap.set("n", "<C-k>", [[<cmd>lua require("tmux").move_top()<cr>]], { desc = "Go to Upper Window", remap = true })
-vim.keymap.set(
-    "n",
-    "<C-l>",
-    [[<cmd>lua require("tmux").move_right()<cr>]],
-    { desc = "Go to Right Window", remap = true }
-)
-
--- Navigate in terminal mode too, so <C-hjkl> works inside terminals like
--- lazygit (snacks float). tmux forwards the keys to nvim, but the maps above
--- are normal-mode only, so without this they leak into the terminal program.
-local tmux_dirs = { h = "left", j = "bottom", k = "top", l = "right" }
-for key, dir in pairs(tmux_dirs) do
-    vim.keymap.set(
-        "t",
-        "<C-" .. key .. ">",
-        ([[<cmd>lua require("tmux").move_%s()<cr>]]):format(dir),
-        { desc = "Go " .. dir .. " window (term)" }
-    )
+-- Terminal mode too, so the keys work inside lazygit and other snacks floats
+-- rather than leaking into the terminal program.
+for key, spec in pairs(smart_splits) do
+    local fn, desc = spec[1], spec[2]
+    vim.keymap.set({ "n", "t" }, key, function()
+        require("smart-splits")[fn]()
+    end, { desc = desc })
 end
 
 vim.keymap.set("n", "<leader>x", "<cmd>!chmod +x %<CR>", { silent = true, desc = "Make current file executable" })
