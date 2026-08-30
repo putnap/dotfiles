@@ -8,9 +8,11 @@
 # Decision table per keypress:
 #   1. Vim owns the focused pane -> forward the key, let smart-splits.nvim move or
 #      resize the Neovim split and call back into herdr at a split edge.
+#      The key sent back must match keymaps.lua: resize is <C-S-arrow>, since
+#      plain <C-arrow> is word motion now.
 #   2. Otherwise act on the herdr split. If nothing changed (no neighbor, or the
 #      pane fills the tab), send the key back so shell defaults survive --
-#      C-l clears, C-h backspaces, C-Left/C-Right move by word.
+#      C-l clears, C-h backspaces, C-Left/C-Right move by word (bound in .zshrc).
 
 set -euo pipefail
 
@@ -24,10 +26,10 @@ case "$mode:$dir" in
   nav:down)     key="ctrl+j" ;;
   nav:up)       key="ctrl+k" ;;
   nav:right)    key="ctrl+l" ;;
-  resize:left)  key="ctrl+left" ;;
-  resize:down)  key="ctrl+down" ;;
-  resize:up)    key="ctrl+up" ;;
-  resize:right) key="ctrl+right" ;;
+  resize:left)  key="ctrl+shift+left" ;;
+  resize:down)  key="ctrl+shift+down" ;;
+  resize:up)    key="ctrl+shift+up" ;;
+  resize:right) key="ctrl+shift+right" ;;
   *) echo "smart-splits.sh: bad arguments: $mode $dir" >&2; exit 2 ;;
 esac
 
@@ -54,7 +56,9 @@ if [ "$mode" = nav ]; then
   output=$("$herdr" pane focus --direction "$dir" --current 2>/dev/null) || send_back
   field='.result.focus.changed'
 else
-  output=$("$herdr" pane resize --direction "$dir" --current 2>/dev/null) || send_back
+  # Without --amount herdr uses its own default, which moves about a quarter of
+  # the screen a press. Matches keymaps.lua's default_amount in feel.
+  output=$("$herdr" pane resize --direction "$dir" --amount 0.03 --current 2>/dev/null) || send_back
   field='.result.resize.changed'
 fi
 

@@ -1,0 +1,25 @@
+# An fzf picker over every running agent. next_agent (prefix+a) walks the panel
+# blind; this shows what each one is doing before you land on it.
+#
+# Split from the `attention` plugin on purpose: attention.jump answers "who
+# needs me" and runs fine without a tty, while this needs a real pty for fzf.
+# Same division as worktree vs sessionizer.
+id = "agents"
+name = "Agent picker"
+version = "0.1.0"
+min_herdr_version = "0.7.0"
+description = "Pick an agent from an fzf list, with a live preview of its pane"
+platforms = ["macos", "linux"]
+
+# Actions run without a tty, so hand off to an overlay pane that has one.
+[[actions]]
+id = "pick"
+title = "Pick an agent"
+contexts = ["global"]
+command = ["bash", "scripts/open-overlay.sh"]
+
+[[panes]]
+id = "picker"
+title = "Agents"
+placement = "overlay"
+command = ["bash", "-c", "exec \"$HERDR_PLUGIN_ROOT/scripts/picker.sh\""]

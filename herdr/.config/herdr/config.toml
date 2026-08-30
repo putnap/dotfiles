@@ -42,9 +42,15 @@ remove_worktree = "prefix+alt+g"
 # Superseded by the prompted popup below, which also asks for base and path.
 new_worktree = ""
 
-# tmux windows -> herdr tabs: S-Left/S-Right and M-H/M-L.
-previous_tab = ["prefix+p", "shift+left", "alt+shift+h"]
-next_tab = ["prefix+n", "shift+right", "alt+shift+l"]
+# tmux windows -> herdr tabs. alt+shift+h/l were dropped: Aerospace binds them
+# globally and always won. ctrl+tab was tried and never arrives either -- the
+# terminal does not deliver it -- so shift+arrows stays the gesture.
+previous_tab = ["prefix+p", "shift+left"]
+next_tab = ["prefix+n", "shift+right"]
+
+# prefix+x is also tmux's kill-pane. The direct chord is for closing repeatedly;
+# ctrl+w stays delete-word, which zsh, Claude Code and lazygit all rely on.
+close_pane = ["prefix+x", "ctrl+shift+w"]
 
 # Shift+arrows are the tmux window-switching muscle memory. Horizontal keeps
 # meaning "tab" (they sit in a horizontal bar); vertical means "workspace"
@@ -59,21 +65,51 @@ focus_agent = "prefix+alt+1..9"
 # Walk the agent panel; with agent_panel_sort = "spaces" this follows sidebar
 # order. prefix+shift+a goes to the attention jump below instead, which is the
 # one you actually reach for.
-next_agent = "prefix+a"
-previous_agent = ""
+# j/k walk the agent panel the way they walk anything vertical. prefix+a is
+# the picker below -- blind cycling is the lesser of the two.
+next_agent = "prefix+j"
+previous_agent = "prefix+k"
 
 # tmux `bind |` / `bind -`. prefix+minus is already the herdr default.
-split_vertical = ["prefix+v", "prefix+|"]
+# prefix+\ is the same physical key as | without the shift, so splitting right
+# costs one keypress fewer. Matches zen (opt+cmd+\) and nvim (<leader>\).
+# Same chord as Zen's splits. Zen and the terminal never receive the same
+# keystroke, so the same action gets the same keys in both -- confirmed
+# working. The prefix forms stay as aliases for existing muscle memory.
+split_vertical = ["ctrl+shift+\\", "prefix+v", "prefix+|"]
+split_horizontal = ["prefix+minus", "ctrl+shift+-"]
 
 # tmux `bind C-o` / `bind s` -> the sesh picker (see [[keys.command]] below).
 # prefix+w keeps herdr's own workspace picker.
 
-# Jump to whichever agent most recently blocked or finished.
+# goto (navigate mode) is herdr's own pane search, unused here, and it frees
+# prefix+g for lazygit below. ctrl+shift+h focuses the workspace sidebar, which
+# is the same idea as ctrl+shift+h hiding Zen's sidebar -- disjoint apps, one
+# chord. ctrl+alt+* was tried first and is not delivered through the terminal.
+goto = "ctrl+shift+h"
+
+# Jump to whichever agent most recently blocked or finished. i for "attention".
 [[keys.command]]
-key = ["prefix+shift+a", "ctrl+alt+a"]
+key = ["prefix+shift+i", "ctrl+shift+i"]
 type = "plugin_action"
 command = "attention.jump"
 description = "jump to the agent needing attention"
+
+# prefix+a cycles blind; this shows what each agent is doing first.
+[[keys.command]]
+key = "prefix+a"
+type = "plugin_action"
+command = "agents.pick"
+description = "pick an agent"
+
+# g is git: prefix+shift+g new worktree, prefix+ctrl+g open one, prefix+g here.
+[[keys.command]]
+key = "prefix+g"
+type = "popup"
+command = "lazygit"
+width = "80%"
+height = "80%"
+description = "lazygit for this workspace"
 
 [[keys.command]]
 key = ["prefix+s", "prefix+ctrl+o"]
@@ -95,6 +131,15 @@ type = "plugin_action"
 command = "worktree.open"
 description = "open an existing git worktree"
 
+# ctrl+shift+= gives this pane its own tab -- the same chord and the same idea
+# as Zen's unsplit, which gives a tab back its own window. \ and - divide,
+# = undivides.
+[[keys.command]]
+key = "ctrl+shift+="
+type = "shell"
+command = "~/.config/herdr/scripts/break-pane.sh tab"   # the script also takes `workspace`
+description = "move this pane into its own tab"
+
 # tmux `bind f` / `bind F` -> agent-fork.
 [[keys.command]]
 key = "prefix+f"
@@ -108,8 +153,9 @@ type = "shell"
 command = "~/.config/herdr/scripts/agent-fork.sh tab"
 description = "fork agent into a tab"
 
-# smart-splits (local plugin): ctrl+hjkl and ctrl+arrows treat nvim splits and
-# herdr panes as one surface. ctrl+arrows match tmux.conf's resize bindings.
+# smart-splits (local plugin): ctrl+hjkl navigates nvim splits and herdr panes as
+# one surface. Resize moved to ctrl+shift+arrows so plain ctrl+arrows can be word
+# motion in every app -- see KEYBINDINGS.md.
 
 [[keys.command]]
 key = "ctrl+h"
@@ -136,25 +182,25 @@ command = "smart-splits.nav-right"
 description = "navigate right (nvim/herdr)"
 
 [[keys.command]]
-key = "ctrl+left"
+key = "ctrl+shift+left"
 type = "plugin_action"
 command = "smart-splits.resize-left"
 description = "resize left (nvim/herdr)"
 
 [[keys.command]]
-key = "ctrl+down"
+key = "ctrl+shift+down"
 type = "plugin_action"
 command = "smart-splits.resize-down"
 description = "resize down (nvim/herdr)"
 
 [[keys.command]]
-key = "ctrl+up"
+key = "ctrl+shift+up"
 type = "plugin_action"
 command = "smart-splits.resize-up"
 description = "resize up (nvim/herdr)"
 
 [[keys.command]]
-key = "ctrl+right"
+key = "ctrl+shift+right"
 type = "plugin_action"
 command = "smart-splits.resize-right"
 description = "resize right (nvim/herdr)"
