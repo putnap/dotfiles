@@ -1,0 +1,3 @@
+# Not a stow package: Zen reads from a randomly-named profile directory, so
+# these files are installed by sync.sh rather than symlinked into $HOME.
+.*
