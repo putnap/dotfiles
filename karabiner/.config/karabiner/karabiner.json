@@ -849,7 +849,7 @@
                         ]
                     },
                     {
-                        "description": "PC-Style Reload(F5, Ctrl+R)",
+                        "description": "PC-Style Reload (F5) -- ctrl+r dropped so it does not shadow atuin",
                         "manipulators": [
                             {
                                 "conditions": [

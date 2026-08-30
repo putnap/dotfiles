@@ -169,8 +169,8 @@ alt-f = 'layout floating tiling'
 
 # See: https://nikitabobko.github.io/AeroSpace/commands#layout
 # \ lays windows out side by side and - stacks them, the same pair as
-# prefix+\ / prefix+- in herdr, <leader>\ / <leader>- in Neovim and
-# opt+cmd+\ / opt+cmd+- in Zen. Same keys, different modifier.
+# ctrl+shift+\ / ctrl+shift+- in Zen and herdr, <leader>\ / <leader>- in
+# Neovim. Same keys, different modifier.
 #
 # Cmd+Alt. Aerospace uses exactly two modifiers: bare Alt goes somewhere,
 # Cmd+Alt acts on what is there. Zen no longer needs this corner -- it moved to

@@ -70,12 +70,9 @@ focus_agent = "prefix+alt+1..9"
 next_agent = "prefix+j"
 previous_agent = "prefix+k"
 
-# tmux `bind |` / `bind -`. prefix+minus is already the herdr default.
-# prefix+\ is the same physical key as | without the shift, so splitting right
-# costs one keypress fewer. Matches zen (opt+cmd+\) and nvim (<leader>\).
-# Same chord as Zen's splits. Zen and the terminal never receive the same
-# keystroke, so the same action gets the same keys in both -- confirmed
-# working. The prefix forms stay as aliases for existing muscle memory.
+# ctrl+shift+\ and ctrl+shift+- are the shared chords: Zen and the terminal
+# never receive the same keystroke, so the same action gets the same keys in
+# both. prefix+v, prefix+| and prefix+minus stay for the tmux muscle memory.
 split_vertical = ["ctrl+shift+\\", "prefix+v", "prefix+|"]
 split_horizontal = ["prefix+minus", "ctrl+shift+-"]
 
@@ -90,7 +87,7 @@ goto = "ctrl+shift+h"
 
 # Jump to whichever agent most recently blocked or finished. i for "attention".
 [[keys.command]]
-key = ["prefix+shift+i", "ctrl+shift+i"]
+key = "ctrl+shift+i"
 type = "plugin_action"
 command = "attention.jump"
 description = "jump to the agent needing attention"

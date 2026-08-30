@@ -57,7 +57,7 @@ vim.keymap.set("n", "<M-Right>", "w", { desc = "Word right" })
 vim.keymap.set("i", "<M-Left>", "<C-o>b", { desc = "Word left" })
 vim.keymap.set("i", "<M-Right>", "<C-o>w", { desc = "Word right" })
 
--- z is zoom: alt-z in Aerospace, prefix+z in herdr, here. LazyVim puts the same
+-- z is zoom: prefix+z in herdr, and here. LazyVim puts the same
 -- toggle on <leader>wm and <leader>uZ; this is the one that matches the others.
 -- Deliberately not Snacks.toggle.zoom():map(...) at file scope: that touches the
 -- Snacks global while this file loads, and if it is not ready yet the error
@@ -71,8 +71,8 @@ end, { desc = "Zoom" })
 vim.keymap.set("n", "<leader>\\", "<C-W>v", { remap = true, desc = "Split Window Right" })
 
 -- = undivides, as in Zen and herdr. <C-w>= is Vim's own; this is the alias that
--- matches the other two. Alt+Shift+= cannot be used here -- Aerospace takes it
--- globally for the same idea one level up.
+-- matches the other two. Aerospace does the same thing one level up on
+-- Cmd+Alt+=, and Zen and herdr on Ctrl+Shift+=.
 vim.keymap.set("n", "<leader>=", "<C-W>=", { remap = true, desc = "Equalize splits" })
 
 vim.keymap.set("n", "<leader>x", "<cmd>!chmod +x %<CR>", { silent = true, desc = "Make current file executable" })
