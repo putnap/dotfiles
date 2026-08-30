@@ -57,17 +57,21 @@
                 gh-dash
                 opencode
                 atuin
+                herdr
 
                 # dev SDKs
                 python3
                 uv
                 go
                 chafa
+                rustc
                 cargo
-                pnpm
-                jdk17
+                rustfmt
+                clippy
+                rust-analyzer
+                jdk25
                 zig
-                elixir
+                dotnet-sdk_10
 
                 # mobile dev
                 android-tools # adb, fastboot
@@ -120,6 +124,9 @@
             "media-control"
             "PeonPing/tap/peon-ping"
             "tnk-studio/tools/lazykube"
+            "modem-dev/tap/hunk"
+            "vite-plus"
+            "bjarneo/cliamp/cliamp"
           ];
           taps = [
             "FelixKratz/formulae"
@@ -220,6 +227,15 @@
           install -d "/Library/Keyboard Layouts"
           rm -rf "/Library/Keyboard Layouts/lithuanian-numeric.bundle"
           cp -R "${./keyboard-layouts/lithuanian-numeric.bundle}" "/Library/Keyboard Layouts/lithuanian-numeric.bundle"
+
+          # The nix.gc launchd timer below never fires: every rebuild rewrites and
+          # reloads its plist, which re-registers the calendar trigger from scratch
+          # and drops any pending event. Collect here instead, where it always runs.
+          # Count-based, not time-based, so rollback depth doesn't drift with how
+          # often we rebuild. nix-collect-garbage has no +N flag, hence two steps.
+          echo "collecting nix garbage..." >&2
+          ${config.nix.package}/bin/nix-env -p /nix/var/nix/profiles/system --delete-generations +3
+          ${config.nix.package}/bin/nix-store --gc
         '';
 
         # Add ability to used TouchID for sudo authentication
@@ -227,13 +243,6 @@
 
         # Necessary for using flakes on this system.
         nix.settings.experimental-features = "nix-command flakes";
-
-        # Automatic garbage collection - runs weekly on Sunday at 2am
-        nix.gc = {
-          automatic = true;
-          interval = { Weekday = 0; Hour = 2; Minute = 0; };
-          options = "--delete-older-than 14d";
-        };
 
         # Automatic store optimization - runs weekly on Sunday at 3am
         nix.optimise = {
