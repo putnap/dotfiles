@@ -1,0 +1,25 @@
+# Mirrors the theme snacks.nvim generates from the catppuccin colorscheme
+# (~/.cache/nvim/lazygit-theme.yml), so lazygit looks the same in and out of Neovim.
+gui:
+  nerdFontsVersion: "3"
+  theme:
+    activeBorderColor:
+      - "#fab387"
+      - "bold"
+    inactiveBorderColor:
+      - "#89b4fa"
+    searchingActiveBorderColor:
+      - "#fab387"
+      - "bold"
+    optionsTextColor:
+      - "#89b4fa"
+    selectedLineBgColor:
+      - "#45475a"
+    cherryPickedCommitFgColor:
+      - "#89b4fa"
+    cherryPickedCommitBgColor:
+      - "#f2cdcd"
+    unstagedChangesColor:
+      - "#f38ba8"
+    defaultFgColor:
+      - "#cdd6f4"
