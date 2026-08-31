@@ -79,8 +79,8 @@ previous_agent = "prefix+k"
 # ctrl+shift+\ and ctrl+shift+- are the shared chords: Zen and the terminal
 # never receive the same keystroke, so the same action gets the same keys in
 # both. prefix+v, prefix+| and prefix+minus stay for the tmux muscle memory.
-split_vertical = ["ctrl+shift+\\", "prefix+v", "prefix+|"]
-split_horizontal = ["prefix+minus", "ctrl+shift+-"]
+split_vertical = ["ctrl+shift+\\"]
+split_horizontal = ["ctrl+shift+-"]
 
 # tmux `bind C-o` / `bind s` -> the sesh picker (see [[keys.command]] below).
 # prefix+w keeps herdr's own workspace picker.
@@ -140,7 +140,7 @@ description = "open an existing git worktree"
 [[keys.command]]
 key = "ctrl+shift+="
 type = "shell"
-command = "~/.config/herdr/scripts/break-pane.sh tab"   # the script also takes `workspace`
+command = "~/.config/herdr/scripts/break-pane.sh tab" # the script also takes `workspace`
 description = "move this pane into its own tab"
 
 # tmux `bind f` / `bind F` -> agent-fork.
@@ -211,9 +211,7 @@ description = "resize right (nvim/herdr)"
 [ui]
 show_agent_labels_on_pane_borders = true
 agent_panel_sort = "priority"
-tab_bar_right = [
-    { type = "zoom" },
-]
+tab_bar_right = [{ type = "zoom" }]
 tab_bar_right_separator = " │ "
 
 [ui.toast]
