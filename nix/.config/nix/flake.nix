@@ -37,6 +37,7 @@
                 lazydocker
                 delta
                 yazi
+                glow
                 fd
                 ripgrep
                 imagemagick
