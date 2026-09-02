@@ -216,3 +216,11 @@ tab_bar_right_separator = " │ "
 
 [ui.toast]
 delivery = "terminal"
+
+# session.json already restores the workspace/tab/pane layout after a reboot;
+# these two bring back what was inside the panes.
+[session]
+resume_agents_on_restore = true
+
+[experimental]
+pane_history = true
