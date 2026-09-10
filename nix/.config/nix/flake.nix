@@ -105,8 +105,8 @@
               fi
               
               function nixr() {
-                nix flake update --flake "$(readlink -f ~/.config/nix)"
-                brew update
+                nix flake update --flake "$(readlink -f ~/.config/nix)" || return
+                brew update || return
                 sudo darwin-rebuild switch --flake "$(readlink -f ~/.config/nix)#mac"
               }
             '';
@@ -232,6 +232,19 @@
           install -d "/Library/Keyboard Layouts"
           rm -rf "/Library/Keyboard Layouts/lithuanian-numeric.bundle"
           cp -R "${./keyboard-layouts/lithuanian-numeric.bundle}" "/Library/Keyboard Layouts/lithuanian-numeric.bundle"
+
+          # Run after package activation, as the owner of the dotfiles (never root).
+          # Resolve the checkout through its Stowed flake, independent of shell cwd.
+          echo "refreshing declarative agent setup..." >&2
+          /usr/bin/sudo -H -u ${user} /usr/bin/env -i \
+            HOME="/Users/${user}" USER="${user}" LOGNAME="${user}" \
+            PATH="${config.system.path}/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+            ${pkgs.bash}/bin/bash -c '
+              set -euo pipefail
+              flake_dir=$(readlink -f "$HOME/.config/nix")
+              repo=$(cd "$flake_dir/../../.." && pwd -P)
+              exec bash "$repo/agents/.config/agent-setup/apply.sh" --repo "$repo" --apply --integrations
+            ' || exit 1
 
           # The nix.gc launchd timer below never fires: every rebuild rewrites and
           # reloads its plist, which re-registers the calendar trigger from scratch

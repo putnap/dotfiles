@@ -4,25 +4,27 @@ The `agents` Stow package owns the shared working agreement, portable skills and
 
 ## Apply
 
-Run from the dotfiles checkout:
+Refresh everything with one command, from any directory:
 
 ```sh
-# Install the pinned, patched Herdr binary (does not restart existing servers).
-sudo darwin-rebuild switch --flake "$PWD/nix/.config/nix#mac"
-
-# Review changes without writing.
-bash agents/.config/agent-setup/apply.sh --repo "$PWD" --integrations
-
-# Back up conflicting files, merge owned settings, Stow, install integrations,
-# register local plugins and reload a compatible running herdr server.
-bash agents/.config/agent-setup/apply.sh --repo "$PWD" --apply --integrations
+nixr
 ```
+
+Nix post-activation runs the agent setup as your user, with the newly installed
+tools on PATH. It resolves the checkout through `~/.config/nix`, merges settings,
+Stows files, installs integrations, registers plugins, and reloads compatible
+Herdr configuration. A setup failure fails activation rather than reporting a
+successful refresh. `install.sh` also runs the same idempotent setup for bootstrap.
+
+For a pinned refresh without updating dependencies, run
+`sudo darwin-rebuild switch --flake ~/dotfiles/nix/.config/nix#mac`; it performs
+the same automatic setup. To review settings changes without applying them, run
+`bash agents/.config/agent-setup/apply.sh --repo "$HOME/dotfiles" --integrations`.
 
 Production Herdr uses `nix/.config/nix/herdr-package.nix`, the same package as the
 preview: pane footer, popup titles, and preserved launch flags on restore. The
 package is guarded to Herdr 0.9.0 and runs the nine targeted Rust tests. Build just
-the binary with `nix build ./nix/.config/nix#herdr`. Use the pinned switch command
-above for this rollout; `nixr` also updates flake inputs and may select a newer
+the binary with `nix build ./nix/.config/nix#herdr`. `nixr` also updates flake inputs and may select a newer
 Herdr version that needs its patches reviewed.
 
 Once active work is finished, run `herdr server stop`, then reopen `herdr` to use
