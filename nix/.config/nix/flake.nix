@@ -33,6 +33,8 @@
                 # Productivity terminal stuff
                 git
                 stow
+                jq
+                dasel # TOML/JSON conversion for declarative agent settings
                 lazygit
                 lazydocker
                 delta
@@ -58,7 +60,9 @@
                 gh-dash
                 opencode
                 atuin
-                herdr
+                (import ./herdr-package.nix { inherit pkgs; })
+                cloudflared
+                codex
 
                 # dev SDKs
                 python3
@@ -263,6 +267,9 @@
       };
     in
     {
+      packages.${system}.herdr = import ./herdr-package.nix {
+        pkgs = nixpkgs.legacyPackages.${system};
+      };
       darwinConfigurations.mac = nix-darwin.lib.darwinSystem {
         modules = [
           configuration

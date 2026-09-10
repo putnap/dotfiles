@@ -1,0 +1,78 @@
+--- a/src/app/custom_commands.rs
++++ b/src/app/custom_commands.rs
+@@ -238,7 +238,9 @@
+                 width: binding.width,
+                 height: binding.height,
+             },
+-        )
++        )?;
++        self.set_popup_title(binding.description.as_deref());
++        Ok(())
+     }
+ 
+     pub(crate) fn custom_command_env(&self) -> (Vec<(String, String)>, Option<std::path::PathBuf>) {
+--- a/src/app/popup.rs
++++ b/src/app/popup.rs
+@@ -3,7 +3,7 @@
+ use crate::app::{App, Mode};
+ use crate::layout::PaneId;
+ use crate::pane::PaneLaunchEnv;
+-use crate::popup_size::{resolve_popup_geometry, PopupSize};
++use crate::popup_size::{PopupSize, resolve_popup_geometry};
+ use crate::terminal::{TerminalId, TerminalRuntime, TerminalState};
+ 
+ #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+@@ -13,6 +13,15 @@
+ }
+ 
+ impl App {
++    pub(crate) fn set_popup_title(&mut self, title: Option<&str>) {
++        let Some(popup) = self.state.popup_pane.as_ref() else {
++            return;
++        };
++        if let Some(terminal) = self.state.terminals.get_mut(&popup.terminal_id) {
++            terminal.set_manual_label(title.unwrap_or_default().to_owned());
++        }
++    }
++
+     pub(crate) fn close_popup_pane(&mut self) -> bool {
+         let Some(popup) = self.state.popup_pane.take() else {
+             return false;
+@@ -224,6 +233,37 @@
+     }
+ 
+     #[test]
++    fn popup_title_uses_description_and_preserves_default_for_blank_labels() {
++        let mut app = app_with_popup();
++        let terminal_id = app.state.popup_pane.as_ref().unwrap().terminal_id.clone();
++        for (description, expected) in [
++            (Some(" Lazygit "), Some("Lazygit")),
++            (Some("GitHub Dashboard"), Some("GitHub Dashboard")),
++            (None, None),
++            (Some("   "), None),
++        ] {
++            app.set_popup_title(description);
++            assert_eq!(
++                app.state.terminals[&terminal_id].manual_label.as_deref(),
++                expected
++            );
++        }
++    }
++
++    #[test]
++    fn popup_title_without_popup_is_a_noop() {
++        let mut app = app_with_popup();
++        app.state.popup_pane = None;
++        app.set_popup_title(Some("Lazygit"));
++        assert!(
++            app.state
++                .terminals
++                .values()
++                .all(|terminal| terminal.manual_label.is_none())
++        );
++    }
++
++    #[test]
+     fn close_popup_uses_terminal_mode_with_active_workspace() {
+         let mut app = app_with_popup();
+         app.state.mode = Mode::Navigate;

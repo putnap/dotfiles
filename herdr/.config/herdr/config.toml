@@ -1,3 +1,4 @@
+onboarding = false
 # Keybindings mirror ~/.config/tmux/tmux.conf so muscle memory carries over.
 # Validate after editing: herdr config check   Apply live: prefix+r
 
@@ -6,6 +7,7 @@ name = "catppuccin"
 
 # Catppuccin's default selection_bg (#313244) sits too close to sidebar_bg
 # (#181825) to read as a highlight. Cursor row and focused row stay two steps apart.
+auto_switch = false
 [theme.custom]
 selection_bg = "#45475a"
 active_row_bg = "#292a3d"
@@ -32,7 +34,7 @@ detach = "prefix+d"
 
 # prefix+o and prefix+s go to the tmux meanings above, so herdr's own actions move.
 # open_notification_target only fires while an in-app toast is visible, and
-# ui.toast.delivery = "terminal" means there never is one; attention.jump below
+# ui.toast.delivery = "off" means there never is one; attention.jump below
 # is the keyboard equivalent that actually works.
 open_notification_target = "prefix+shift+o"
 settings = "prefix+ctrl+s"
@@ -112,7 +114,15 @@ type = "popup"
 command = "lazygit"
 width = "80%"
 height = "80%"
-description = "lazygit for this workspace"
+description = "Lazygit"
+
+[[keys.command]]
+key = "prefix+h"
+type = "popup"
+command = "gh-dash"
+width = "80%"
+height = "80%"
+description = "GitHub Dashboard"
 
 [[keys.command]]
 key = ["prefix+s", "prefix+ctrl+o"]
@@ -155,6 +165,21 @@ key = "prefix+shift+f"
 type = "shell"
 command = "~/.config/herdr/scripts/agent-fork.sh tab"
 description = "fork agent into a tab"
+
+# tmux `bind C` -> a tab that starts as claude, not as a shell running claude.
+# ctrl+shift+c is the pane version: bare ctrl+shift+* is the pane-scope family
+# here (split, close_pane, break-pane), so the chord says which one you get.
+[[keys.command]]
+key = "prefix+shift+c"
+type = "plugin_action"
+command = "agents.new-tab"
+description = "new tab with the default agent"
+
+[[keys.command]]
+key = "ctrl+shift+c"
+type = "plugin_action"
+command = "agents.new-pane"
+description = "new pane with the default agent"
 
 # smart-splits (local plugin): ctrl+hjkl navigates nvim splits and herdr panes as
 # one surface. Resize moved to ctrl+shift+arrows so plain ctrl+arrows can be word
@@ -210,12 +235,13 @@ description = "resize right (nvim/herdr)"
 
 [ui]
 show_agent_labels_on_pane_borders = true
-agent_panel_sort = "priority"
+agent_panel_sort = "spaces"
 tab_bar_right = [{ type = "zoom" }]
 tab_bar_right_separator = " │ "
 
+status_indicators = "symbols"
 [ui.toast]
-delivery = "terminal"
+delivery = "off"
 
 # session.json already restores the workspace/tab/pane layout after a reboot;
 # these two bring back what was inside the panes.
@@ -224,3 +250,52 @@ resume_agents_on_restore = true
 
 [experimental]
 pane_history = true
+
+# Peon owns agent sounds and banners through herdr events.
+[ui.sound]
+enabled = false
+
+[[keys.command]]
+key = "prefix+alt+c"
+type = "plugin_action"
+command = "agents.choose"
+description = "choose agent for a new tab"
+
+[[keys.command]]
+key = "prefix+alt+m"
+type = "plugin_action"
+command = "peon.mute"
+description = "toggle agent sounds"
+
+# Per-session footer. Reload with prefix+r after editing.
+[ui.pane_footer]
+enabled = true
+
+# Available fields: access, directory, branch, model, effort, context, five_hour, weekly.
+# Remove a field to hide it; reorder or move it between sides. Missing data is omitted.
+left = ["access", "directory", "branch"]
+right = [["model", " ", "effort"], "context", "five_hour", "weekly"]
+# Outer items use this separator. Inner arrays concatenate tokens and literal text.
+# Tokens retain their own colors; groups without available token data are omitted.
+separator = " · "
+
+context_label = "ctx"
+five_hour_label = "5h"
+weekly_label = "week"
+# Strictly above these percentages; 80% remains green and 95% remains amber.
+warning_percent = 80
+critical_percent = 95
+
+# Theme palette names or literal #RGB / #RRGGBB colors.
+# Palette names follow the active theme: red, green, yellow, blue, mauve,
+# teal, peach, text, subtext0, surface0.
+access_color = "red"
+directory_color = "green"
+branch_color = "blue"
+model_color = "mauve"
+effort_color = "mauve"
+usage_color = "green"
+warning_color = "yellow"
+critical_color = "red"
+separator_color = "text"
+background_color = "surface0"

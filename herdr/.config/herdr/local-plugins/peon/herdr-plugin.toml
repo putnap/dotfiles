@@ -1,0 +1,19 @@
+id = "peon"
+name = "Peon notifications"
+version = "0.1.0"
+min_herdr_version = "0.9.0"
+description = "One completion/attention notification per herdr agent transition"
+platforms = ["macos"]
+
+[[startup]]
+command = ["bash", "scripts/notify.sh", "seed"]
+
+[[events]]
+on = "pane.agent_status_changed"
+command = ["bash", "scripts/notify.sh", "event"]
+
+[[actions]]
+id = "mute"
+title = "Toggle agent sounds"
+contexts = ["global"]
+command = ["peon", "toggle"]

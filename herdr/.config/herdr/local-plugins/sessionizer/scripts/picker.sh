@@ -9,17 +9,13 @@
 set -euo pipefail
 
 ROOTS=("$HOME/Documents/Projects:3" "$HOME/dotfiles:2")
-REFRESH_SECONDS=1
+REFRESH_SECONDS=2
 
 herdr="${HERDR_BIN_PATH:-herdr}"
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
 tmp=$(mktemp -d)
-cleanup() {
-  [ -n "${poller:-}" ] && kill "$poller" 2>/dev/null
-  rm -rf "$tmp"
-}
-trap cleanup EXIT
+trap 'rm -rf "$tmp"' EXIT
 
 # One query serves both the first render and the open-path filter below.
 open_rows=$(bash "$here/open-rows.sh")
@@ -35,23 +31,32 @@ done | sed 's:/\.git$::' | sort -u |
   # than everything else here combined. The inner grep drops the empty line
   # printf leaves when nothing is open, which would otherwise match every row.
   grep -vxF -f <(printf '%s\n' "$open_paths" | grep -v '^$') |
-  awk -F/ '{ printf "  %s\t%s\t\n", $NF, $0 }' > "$tmp/repos"
+  # A linked worktree reads as its repo's child, not as a repo of its own: its
+  # .git is a file naming the main checkout, so no git process is needed. Sort
+  # key 0/1 keeps the worktrees together, ahead of the plain repos.
+  while read -r dir; do
+    name=${dir##*/}
+    if [ -f "$dir/.git" ]; then
+      read -r _ gitdir < "$dir/.git"
+      case $gitdir in
+        */.git/worktrees/*)
+          main=${gitdir%%/.git/worktrees/*}
+          repo=${main##*/}
+          printf '0\t\u2442 %s \u203a %s\t%s\t\n' "$repo" "${name#"$repo"-}" "$dir"
+          continue ;;
+      esac
+    fi
+    printf '1\t  %s\t%s\t\n' "$name" "$dir"
+  done |
+  sort -t$'\t' -k1,1 -k2,2 | cut -f2- > "$tmp/repos"
 
-# fzf --listen takes actions over a socket; a poller pushes reload so agent
-# status stays live. --track keeps the cursor on the same row across reloads.
-sock=$tmp/fzf.sock
-(
-  while sleep "$REFRESH_SECONDS"; do
-    [ -S "$sock" ] || continue
-    curl -s --unix-socket "$sock" -XPOST http://localhost/ \
-      -d "reload(bash $here/rows.sh $tmp/repos)" >/dev/null 2>&1 || exit 0
-  done
-) &
-poller=$!
-
+# every() reloads in fzf itself, so agent status stays live without a socket
+# poller. reload-sync swaps the list in one step instead of blanking it first,
+# and --id-nth=2 tracks by path: the label field carries the status icon, which
+# changes under the cursor and would lose it on every refresh.
 choice=$(printf '%s\n' "$open_rows" | cat - "$tmp/repos" |
-  fzf --delimiter='\t' --with-nth=1 --no-multi --height=100% --track \
-      --listen="$sock" \
+  fzf --delimiter='\t' --with-nth=1 --id-nth=2 --no-multi --height=100% --track \
+      --bind="every($REFRESH_SECONDS):reload-sync(bash $here/rows.sh $tmp/repos)" \
       --prompt='workspace> ' --header='enter: focus or create' \
       --preview='git -C {2} log --oneline -12 2>/dev/null || ls -la {2}' \
       --preview-window=right:55%) || exit 0
@@ -62,5 +67,14 @@ workspace=$(cut -f3 <<<"$choice")
 
 if [ -n "$workspace" ]; then
   exec "$herdr" workspace focus "$workspace"
+fi
+
+# A linked worktree opened as a plain workspace carries no worktree metadata, so
+# herdr lists it top-level instead of under its repo. --git-common-dir points at
+# the main repo's .git from inside a worktree, and at our own when we are it.
+common=$(git -C "$path" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || common=""
+repo=${common:+$(dirname "$common")}
+if [ -n "$repo" ] && [ "$repo" != "$path" ]; then
+  exec "$herdr" worktree open --cwd "$repo" --path "$path" --focus
 fi
 exec "$herdr" workspace create --cwd "$path" --focus

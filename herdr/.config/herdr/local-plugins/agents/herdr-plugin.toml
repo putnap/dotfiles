@@ -23,3 +23,42 @@ id = "picker"
 title = "Agents"
 placement = "overlay"
 command = ["bash", "-c", "exec \"$HERDR_PLUGIN_ROOT/scripts/picker.sh\""]
+
+# A tab whose process *is* claude. `herdr tab create` can only launch the shell,
+# so a scripted "create tab, then run claude" shows the prompt and the typed
+# command before claude paints; a plugin pane is launched as the pane's program.
+[[actions]]
+id = "new-tab"
+title = "New agent tab"
+contexts = ["workspace"]
+command = ["bash", "scripts/open-agent.sh", "tab"]
+
+[[actions]]
+id = "new-pane"
+title = "New agent pane"
+contexts = ["workspace"]
+command = ["bash", "scripts/open-agent.sh", "split"]
+
+[[panes]]
+id = "claude"
+title = "claude"
+placement = "tab"
+command = ["claude", "--dangerously-skip-permissions"]
+
+[[panes]]
+id = "codex"
+title = "codex"
+placement = "tab"
+command = ["codex"]
+
+[[actions]]
+id = "choose"
+title = "Choose agent for a new tab"
+contexts = ["workspace"]
+command = ["herdr", "plugin", "pane", "open", "--plugin", "agents", "--entrypoint", "chooser", "--placement", "overlay", "--focus"]
+
+[[panes]]
+id = "chooser"
+title = "Launch agent"
+placement = "overlay"
+command = ["bash", "scripts/choose-agent.sh"]

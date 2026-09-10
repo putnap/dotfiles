@@ -11,6 +11,8 @@
 # fzf renders here. It does not in a `popup`, whose stdout is not a tty.
 set -euo pipefail
 
+herdr="${HERDR_BIN_PATH:-herdr}"
+
 branch="" base="" path="" focus="--focus"
 while [ $# -gt 0 ]; do
   case $1 in
@@ -32,17 +34,46 @@ die() {
 # An agent runs inside its own pane and gets HERDR_PANE_ID; the popup is not a
 # pane, so it falls back to whichever pane the UI has focused.
 if [ -n "${HERDR_PANE_ID:-}" ]; then
-  pane=$(herdr pane get "$HERDR_PANE_ID")
+  pane=$("$herdr" pane get "$HERDR_PANE_ID")
 else
-  pane=$(herdr pane current)
+  pane=$("$herdr" pane current)
 fi
-workspace=$(jq -r '.result.pane.workspace_id' <<<"$pane")
 cwd=$(jq -r '.result.pane.foreground_cwd // .result.pane.cwd' <<<"$pane")
-repo=$(git -C "$cwd" rev-parse --show-toplevel 2>/dev/null) || die "$cwd is not a git repository"
+
+# --git-common-dir resolves to the *main* repo's .git even from inside a linked
+# worktree; --show-toplevel would give the worktree itself, and herdr rejects
+# creating from one (linked_worktree_source).
+common=$(git -C "$cwd" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) ||
+  die "$cwd is not a git repository"
+repo=$(dirname "$common")
+
+# Create from the repo's parent workspace when it is open; otherwise let herdr
+# resolve it from the repo root.
+workspace=$("$herdr" workspace list |
+  jq -r --arg repo "$repo" 'first(.result.workspaces[]
+    | select(.worktree.repo_root == $repo and .worktree.is_linked_worktree == false)
+    | .workspace_id) // empty')
+
+# Existing branches, local first, then remote-only ones with their remote
+# stripped -- checking out origin/feat/x means a local feat/x tracking it.
+branch_candidates() {
+  {
+    git -C "$repo" for-each-ref --format='%(refname:short)' --sort=-committerdate refs/heads
+    git -C "$repo" for-each-ref --format='%(refname:lstrip=3)' --sort=-committerdate \
+      --exclude='refs/remotes/*/HEAD' refs/remotes
+  } | awk '!seen[$0]++'
+}
 
 if [ -z "$branch" ]; then
-  printf 'New worktree in %s\n\n' "$repo"
-  read -r -p 'Branch (existing is checked out, otherwise created): ' branch
+  # --print-query so a name that matches nothing is still usable: fzf exits 1
+  # and prints just the query, which becomes the new branch.
+  picked=$(branch_candidates |
+    fzf --print-query --no-multi --height=100% \
+        --prompt="branch in $(basename "$repo")> " \
+        --preview='git -C '"$repo"' log --oneline -12 {} -- 2>/dev/null' \
+        --preview-window=right:55%) || [ $? -eq 1 ] || die "cancelled"
+  branch=$(sed -n '2p' <<<"$picked")
+  [ -n "$branch" ] || branch=$(sed -n '1p' <<<"$picked")
   [ -n "$branch" ] || die "no branch given"
 fi
 
@@ -66,7 +97,15 @@ default_path() {
   fi
 }
 
-if [ -z "$base" ] && [ -t 1 ]; then
+# A branch that exists only on a remote should track it rather than prompt.
+if [ -z "$base" ] && ! git -C "$repo" show-ref --verify --quiet "refs/heads/$branch"; then
+  remote_ref=$(git -C "$repo" for-each-ref --format='%(refname:short)' \
+    --count=1 "refs/remotes/*/$branch")
+  [ -n "$remote_ref" ] && base=$remote_ref
+fi
+
+# An existing branch is just checked out, so there is nothing to base it on.
+if [ -z "$base" ] && [ -t 1 ] && ! git -C "$repo" show-ref --verify --quiet "refs/heads/$branch"; then
   base=$(
     { echo HEAD; git -C "$repo" for-each-ref --format='%(refname:short)' --sort=-committerdate refs/heads; } |
       fzf --no-multi --height=100% --prompt="base for $branch> " \
@@ -84,7 +123,8 @@ if [ -z "$path" ]; then
   path=${path:-$suggested}
 fi
 
-args=(--workspace "$workspace" --branch "$branch" "$focus")
+args=(--branch "$branch" "$focus")
+if [ -n "$workspace" ]; then args+=(--workspace "$workspace"); else args+=(--cwd "$repo"); fi
 [ -n "$base" ] && args+=(--base "$base")
 [ -n "$path" ] && args+=(--path "$path")
-herdr worktree create "${args[@]}" >/dev/null || die "herdr worktree create failed"
+"$herdr" worktree create "${args[@]}" >/dev/null || die "herdr worktree create failed"

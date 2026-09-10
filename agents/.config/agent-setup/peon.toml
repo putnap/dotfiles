@@ -1,0 +1,6 @@
+desktop_notifications = true
+terminal_tab_title = false
+notification_title_script = ""
+focus_detect = false
+suppress_sound_when_tab_focused = false
+suppress_idle_prompt_repeats = false

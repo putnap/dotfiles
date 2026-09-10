@@ -1,0 +1,27 @@
+cleanupPeriodDays = 120
+model = "claude-fable-5-1[1m]"
+outputStyle = "Concise"
+feedbackDrafts = "off"
+effortLevel = "high"
+tui = "fullscreen"
+theme = "custom:catppuccin-mocha"
+preferredNotifChannel = "notifications_disabled"
+remoteControlAtStartup = true
+voiceEnabled = true
+notify_claude_update = false
+
+[env]
+DISABLE_AUTOUPDATER = "1"
+
+[statusLine]
+type = "command"
+command = "bash ~/.config/herdr/footer/claude-cache.sh"
+
+[enabledPlugins]
+"frontend-design@claude-plugins-official" = true
+"rust-analyzer-lsp@claude-plugins-official" = true
+"swift-lsp@claude-plugins-official" = true
+
+[voice]
+enabled = true
+mode = "hold"

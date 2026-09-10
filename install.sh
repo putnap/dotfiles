@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
-stow -v */
+set -euo pipefail
+cd "$(dirname "$0")"
 
-# install yazi plugins
+# Agent settings need merging and backups before Stow replaces existing files.
+bash agents/.config/agent-setup/apply.sh --repo "$PWD" --apply --integrations
+for package in */; do
+  case "$package" in agents/|claude/|herdr/|docs/|tests/|scripts/) continue ;; esac
+  stow -v "${package%/}"
+done
 ya pack -i

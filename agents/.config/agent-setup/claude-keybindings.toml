@@ -1,0 +1,183 @@
+'$schema' = 'https://platform.claude.com/docs/schemas/claude-code/keybindings.json'
+'$docs' = 'https://code.claude.com/docs/en/keybindings'
+
+[[bindings]]
+context = 'Global'
+
+[bindings.bindings]
+'ctrl+o' = 'app:toggleTranscript'
+'ctrl+r' = 'history:search'
+'ctrl+t' = 'app:toggleTodos'
+'meta+o' = 'app:toggleTeammatePreview'
+
+[[bindings]]
+context = 'Chat'
+
+[bindings.bindings]
+'ctrl+_' = 'chat:undo'
+'ctrl+g' = 'chat:externalEditor'
+'ctrl+s' = 'chat:stash'
+'ctrl+shift+v' = 'chat:imagePaste'
+down = 'history:next'
+enter = 'chat:submit'
+escape = 'chat:cancel'
+'meta+p' = 'chat:modelPicker'
+'meta+t' = 'chat:thinkingToggle'
+'shift+tab' = 'chat:cycleMode'
+up = 'history:previous'
+
+[[bindings]]
+context = 'Autocomplete'
+
+[bindings.bindings]
+down = 'autocomplete:next'
+escape = 'autocomplete:dismiss'
+tab = 'autocomplete:accept'
+up = 'autocomplete:previous'
+
+[[bindings]]
+context = 'Settings'
+
+[bindings.bindings]
+'/' = 'settings:search'
+'ctrl+n' = 'select:next'
+'ctrl+p' = 'select:previous'
+down = 'select:next'
+enter = 'select:accept'
+escape = 'confirm:no'
+j = 'select:next'
+k = 'select:previous'
+r = 'settings:retry'
+space = 'select:accept'
+up = 'select:previous'
+
+[[bindings]]
+context = 'Confirmation'
+
+[bindings.bindings]
+'ctrl+e' = 'confirm:toggleExplanation'
+down = 'confirm:next'
+enter = 'confirm:yes'
+escape = 'confirm:no'
+n = 'confirm:no'
+'shift+tab' = 'confirm:cycleMode'
+tab = 'confirm:nextField'
+up = 'confirm:previous'
+y = 'confirm:yes'
+
+[[bindings]]
+context = 'Tabs'
+
+[bindings.bindings]
+left = 'tabs:previous'
+right = 'tabs:next'
+'shift+tab' = 'tabs:previous'
+tab = 'tabs:next'
+
+[[bindings]]
+context = 'Transcript'
+
+[bindings.bindings]
+'ctrl+e' = 'transcript:toggleShowAll'
+escape = 'transcript:exit'
+
+[[bindings]]
+context = 'HistorySearch'
+
+[bindings.bindings]
+'ctrl+r' = 'historySearch:next'
+enter = 'historySearch:execute'
+escape = 'historySearch:accept'
+tab = 'historySearch:accept'
+
+[[bindings]]
+context = 'Task'
+
+[bindings.bindings]
+'ctrl+b' = 'task:background'
+
+[[bindings]]
+context = 'ThemePicker'
+
+[bindings.bindings]
+'ctrl+t' = 'theme:toggleSyntaxHighlighting'
+
+[[bindings]]
+context = 'Help'
+
+[bindings.bindings]
+escape = 'help:dismiss'
+
+[[bindings]]
+context = 'Attachments'
+
+[bindings.bindings]
+backspace = 'attachments:remove'
+delete = 'attachments:remove'
+down = 'attachments:exit'
+escape = 'attachments:exit'
+left = 'attachments:previous'
+right = 'attachments:next'
+
+[[bindings]]
+context = 'Footer'
+
+[bindings.bindings]
+enter = 'footer:openSelected'
+escape = 'footer:clearSelection'
+left = 'footer:previous'
+right = 'footer:next'
+
+[[bindings]]
+context = 'MessageSelector'
+
+[bindings.bindings]
+'ctrl+down' = 'messageSelector:bottom'
+'ctrl+up' = 'messageSelector:top'
+down = 'messageSelector:down'
+enter = 'messageSelector:select'
+j = 'messageSelector:down'
+k = 'messageSelector:up'
+'meta+down' = 'messageSelector:bottom'
+'meta+up' = 'messageSelector:top'
+'shift+j' = 'messageSelector:bottom'
+'shift+k' = 'messageSelector:top'
+up = 'messageSelector:up'
+
+[[bindings]]
+context = 'DiffDialog'
+
+[bindings.bindings]
+down = 'diff:nextFile'
+enter = 'diff:viewDetails'
+escape = 'diff:dismiss'
+left = 'diff:previousSource'
+right = 'diff:nextSource'
+up = 'diff:previousFile'
+
+[[bindings]]
+context = 'ModelPicker'
+
+[bindings.bindings]
+left = 'modelPicker:decreaseEffort'
+right = 'modelPicker:increaseEffort'
+
+[[bindings]]
+context = 'Select'
+
+[bindings.bindings]
+'ctrl+n' = 'select:next'
+'ctrl+p' = 'select:previous'
+down = 'select:next'
+enter = 'select:accept'
+escape = 'select:cancel'
+j = 'select:next'
+k = 'select:previous'
+up = 'select:previous'
+
+[[bindings]]
+context = 'Plugin'
+
+[bindings.bindings]
+i = 'plugin:install'
+space = 'plugin:toggle'

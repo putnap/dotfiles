@@ -1,0 +1,24 @@
+# Model and effort remain independent of Claude.
+model = "gpt-6-astra"
+model_reasoning_effort = "medium"
+service_tier = "default"
+project_doc_fallback_filenames = ["CLAUDE.md"]
+approval_policy = "on-request"
+approvals_reviewer = "auto_review"
+sandbox_mode = "workspace-write"
+
+[sandbox_workspace_write]
+network_access = false
+
+[tui]
+notifications = false
+theme = "catppuccin-mocha"
+status_line = [] # Herdr owns the per-session footer.
+status_line_use_colors = true
+
+[tui.keymap.global]
+open_transcript = "ctrl-o"
+open_external_editor = "ctrl-g"
+
+[tui.keymap.composer]
+submit = ["enter", "ctrl-m"]

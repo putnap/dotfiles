@@ -1,0 +1,14 @@
+id = "agent-footer"
+name = "Agent footer"
+version = "0.1.0"
+min_herdr_version = "0.9.0"
+platforms = ["macos"]
+
+[[startup]]
+command = ["bash", "-c", 'exec bash "$HOME/.config/herdr/footer/collect.sh"']
+
+[[actions]]
+id = "collect"
+title = "Start footer collector"
+contexts = ["global"]
+command = ["bash", "-c", 'exec bash "$HOME/.config/herdr/footer/collect.sh"']
