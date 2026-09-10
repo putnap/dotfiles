@@ -20,7 +20,7 @@ if [[ -n $rollback ]]; then
     if jq -e 'has("symlink")' <<< "$entry" >/dev/null; then
       ln -s "$(jq -r '.symlink' <<< "$entry")" "$target"
     elif jq -e 'has("backup")' <<< "$entry" >/dev/null; then
-      cp -p "$(jq -r '.backup' <<< "$entry")" "$target"
+      cp -Rp "$(jq -r '.backup' <<< "$entry")" "$target"
     fi
   done < <(jq -c 'reverse[]' "$rollback")
   echo "Restored files from $rollback"
@@ -56,9 +56,9 @@ save() {
   chmod 700 "$backup"
   if [[ -L $target ]]; then
     entry=$(jq -cn --arg path "$target" --arg link "$(readlink "$target")" '{path:$path,symlink:$link}')
-  elif [[ -f $target ]]; then
+  elif [[ -f $target || -d $target ]]; then
     file=$backup/$count
-    cp -p "$target" "$file"
+    cp -Rp "$target" "$file"
     entry=$(jq -cn --arg path "$target" --arg backup "$file" '{path:$path,backup:$backup}')
   elif [[ -e $target ]]; then
     echo "Refusing to replace directory: $target" >&2; exit 1
@@ -120,7 +120,9 @@ for package in agents claude herdr; do
   while IFS= read -r -d '' source; do
     target=$home/${source#"$repo/$package/"}
     if [[ -e $target && $target -ef $source ]]; then continue; fi
-    if [[ -d $target && ! -L $target ]]; then echo "Directory conflict: $target" >&2; exit 1; fi
+    if [[ -d $target && ! -L $target && ! ( -L $source && -d $source ) ]]; then
+      echo "Directory conflict: $target" >&2; exit 1
+    fi
   done < <(find "$repo/$package" \( -name .DS_Store -o -name __pycache__ \) -prune -o \( -type f -o -type l \) -print0)
 done
 [[ ! -f $scratch/claude ]] || write "$home/.claude/settings.json" "$scratch/claude"
@@ -135,7 +137,11 @@ for package in agents claude herdr; do
     if [[ -e $target && $target -ef $source ]]; then continue; fi
     echo "link $target -> $source"
     save "$target"
-    if [[ $apply == true && ( -e $target || -L $target ) ]]; then rm "$target"; fi
+    if [[ $apply == true && ( -e $target || -L $target ) ]]; then
+      if [[ -d $target && ! -L $target ]]; then
+        mv "$target" "$backup/replaced-directory-$count"
+      else rm "$target"; fi
+    fi
   done < <(find "$repo/$package" \( -name .DS_Store -o -name __pycache__ \) -prune -o \( -type f -o -type l \) -print0)
 done
 if [[ $apply == true ]]; then stow --no-folding --ignore='__pycache__|\.DS_Store' --dir "$repo" --target "$home" agents claude herdr; fi

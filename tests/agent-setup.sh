@@ -5,15 +5,20 @@ scratch=$(mktemp -d)
 trap 'rm -rf "$scratch"' EXIT
 home=$scratch/home
 mkdir -p "$home/.claude" "$home/.codex"
+mkdir -p "$home/.claude/skills/rearchitect"
+printf 'local skill notes' > "$home/.claude/skills/rearchitect/local-notes.txt"
 printf '{"permissions":{"allow":["Bash(pnpm:*)"]},"unknown":42}\n' > "$home/.claude/settings.json"
 printf 'original agreement' > "$home/.claude/CLAUDE.md"
 printf 'sandbox_mode="read-only"\n[projects."/example"]\ntrust_level="trusted"\n' > "$home/.codex/config.toml"
+printf '[hooks]\nmanaged_dir="/example/hooks"\n[hooks.state.example]\ntrusted_hash="keep-trust"\n' >> "$home/.codex/config.toml"
 cp "$home/.claude/settings.json" "$scratch/original"
 cp "$home/.codex/config.toml" "$scratch/codex"
 bash "$repo/agents/.config/agent-setup/apply.sh" --repo "$repo" --home "$home" --apply > "$scratch/first"
 jq -e '.permissions.allow == ["Bash(pnpm:*)"] and .unknown == 42' "$home/.claude/settings.json" >/dev/null
 dasel -i toml -o json < "$home/.codex/config.toml" | jq -e '.sandbox_mode == "workspace-write" and .projects["/example"].trust_level == "trusted"' >/dev/null
+dasel -i toml -o json < "$home/.codex/config.toml" | jq -e '.hooks.state.example.trusted_hash == "keep-trust" and .hooks.managed_dir == "/example/hooks"' >/dev/null
 [[ $home/.claude/CLAUDE.md -ef $repo/agents/.agents/AGENTS.md ]]
+[[ -L $home/.claude/skills/rearchitect ]]
 bash "$repo/agents/.config/agent-setup/apply.sh" --repo "$repo" --home "$home" --apply > "$scratch/second"
 [[ $(find "$home/.local/state/agent-setup/backups" -name manifest.json | wc -l | tr -d ' ') == 1 ]]
 manifest=$(find "$home/.local/state/agent-setup/backups" -name manifest.json)
@@ -21,6 +26,7 @@ bash "$repo/agents/.config/agent-setup/apply.sh" --rollback "$manifest" >/dev/nu
 cmp "$scratch/original" "$home/.claude/settings.json"
 cmp "$scratch/codex" "$home/.codex/config.toml"
 [[ $(cat "$home/.claude/CLAUDE.md") == 'original agreement' ]]
+[[ $(cat "$home/.claude/skills/rearchitect/local-notes.txt") == 'local skill notes' ]]
 printf '{"tui":{"local":true,"old":1},"hooks":{"Stop":[{"hooks":[{"command":"/x/peon-ping/peon.sh"},{"command":"keep"}]}]}}' > "$scratch/live"
 printf '{"tui":{"notifications":false}}' > "$scratch/wanted"
 printf '{"test":{"tui":{"old":1}}}' > "$scratch/previous"
