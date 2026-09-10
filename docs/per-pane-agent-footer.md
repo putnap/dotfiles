@@ -30,7 +30,7 @@ Implementation: `nix/.config/nix/patches/herdr-pane-footer.patch`, built through
 production plugin registration directory. `scripts/herdr-footer-demo.sh start`
 configures the preview and opens real agents; `live` opens another pair.
 
-Validation: release build, five Rust footer tests (geometry, Unicode overflow,
+Validation: release build, six Rust footer tests (geometry, Unicode overflow,
 missing values/colors, configuration), jq metric and startup fixtures, live session identity and metadata
 updates, and attached terminal rendering at narrow and wide sizes. Broader mouse,
 and 15-pane performance verification remains before production rollout. Native
@@ -47,8 +47,8 @@ session-log records using its reported ID and matches the 0.153.4 context formul
 The collector refreshes metadata every three seconds with a 15-second liveness
 TTL. Its private cache retains metadata and potentially an incomplete log line;
 temporary raw chunks are deleted after parsing. Codex's internal log format is
-version-sensitive. Presentation is configured in `[ui.pane_footer]` in the main
-`herdr/.config/herdr/config.toml`: field
+version-sensitive. Presentation is configured in the separate
+`herdr/.config/herdr/pane-footer.toml`: field
 order and side, colors, labels, separator, enablement, and percentage thresholds.
 
 Access badges precede the worktree: `[bypass]`, `[full access]`, `[auto edits]`,
@@ -159,7 +159,7 @@ Still unverified: complete patched build, collector implementation, exact Codex 
 
 ## Editable footer configuration
 
-Edit `[ui.pane_footer]` in `herdr/.config/herdr/config.toml`, then run:
+Edit `herdr/.config/herdr/pane-footer.toml`, then run:
 
 ```sh
 bash ~/dotfiles/scripts/herdr-footer-demo.sh reload
@@ -244,3 +244,11 @@ with unchanged session IDs. Actual process argv retained the flags; Claude's TUI
 showed bypass enabled and Codex `/status` showed Full Access. Both footers resumed
 with `[bypass]`, and the collector restarted automatically after the lock fix.
 The user's active preview and production sessions were not restarted.
+
+Production configuration is now split: stock-compatible `config.toml` and
+patch-only `pane-footer.toml`. The patched loader reads the extension beside the
+selected base file; no merged configuration is written back to disk. Verified
+stock validation with the extension present, patched startup, successful reload,
+failed reload for an unknown extension key, and recovery after fixing that key.
+The base file remained byte-identical. Ten targeted Rust tests passed in the
+combined build, including the extension loader regression test.

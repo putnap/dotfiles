@@ -14,8 +14,8 @@ configure() {
   local next
   next=$(mktemp "$root/.config.XXXXXX")
   if ! dasel -i toml -o json < "$repo/herdr/.config/herdr/config.toml" |
-    jq '{onboarding:false,theme,keys:(.keys|.command |= map(select(.type != "plugin_action"))),session,
-      ui:{pane_borders:"always",pane_footer:.ui.pane_footer,toast:{delivery:"off"},sound:{enabled:false}},
+    jq --slurpfile footer <(dasel -i toml -o json < "$repo/herdr/.config/herdr/pane-footer.toml") '{onboarding:false,theme,keys:(.keys|.command |= map(select(.type != "plugin_action"))),session,
+      ui:{pane_borders:"always",pane_footer:$footer[0],toast:{delivery:"off"},sound:{enabled:false}},
       terminal:{default_shell:"/bin/zsh",shell_mode:"login"},experimental:(.experimental + {allow_nested:true})}' |
     dasel -i json -o toml > "$next" ||
     ! HERDR_CONFIG_PATH="$next" "$binary" config check; then

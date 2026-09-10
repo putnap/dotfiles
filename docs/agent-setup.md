@@ -23,15 +23,19 @@ the same automatic setup. To review settings changes without applying them, run
 
 Production Herdr uses `nix/.config/nix/herdr-package.nix`, the same package as the
 preview: pane footer, popup titles, and preserved launch flags on restore. The
-package is guarded to Herdr 0.9.0 and runs the nine targeted Rust tests. Build just
+package is guarded to Herdr 0.9.0 and runs the targeted Rust tests. Build just
 the binary with `nix build ./nix/.config/nix#herdr`. `nixr` also updates flake inputs and may select a newer
 Herdr version that needs its patches reviewed.
 
 Once active work is finished, run `herdr server stop`, then reopen `herdr` to use
 the new binary. Stopping a server terminates its pane processes; the declared
 restore settings preserve sessions and their saved launch flags. Setup never
-stops the server for you. Footer preferences live in `[ui.pane_footer]` in
-`herdr/.config/herdr/config.toml`; prefix+r reloads presentation changes.
+stops the server for you. Footer preferences live in
+`herdr/.config/herdr/pane-footer.toml`; prefix+r reloads presentation changes.
+The main `config.toml` stays compatible with stock Herdr. Only the patched
+binary reads the adjacent `pane-footer.toml`, during startup and reload. An
+explicit `HERDR_CONFIG_PATH` looks for the extension beside that selected file,
+so isolated configurations do not inherit production footer settings.
 
 `install.sh` runs this same setup before the other Stow packages. The flake declares Stow, jq, dasel 3+, fzf and herdr; peon-ping is declared through its Homebrew integration. Apply the flake first. Scripts use Bash and macOS utilities, with no language-package installation or downloads during setup.
 

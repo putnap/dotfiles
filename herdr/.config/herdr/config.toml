@@ -266,36 +266,3 @@ key = "prefix+alt+m"
 type = "plugin_action"
 command = "peon.mute"
 description = "toggle agent sounds"
-
-# Per-session footer. Reload with prefix+r after editing.
-[ui.pane_footer]
-enabled = true
-
-# Available fields: access, directory, branch, model, effort, context, five_hour, weekly.
-# Remove a field to hide it; reorder or move it between sides. Missing data is omitted.
-left = ["access", "directory", "branch"]
-right = [["model", " ", "effort"], "context", "five_hour", "weekly"]
-# Outer items use this separator. Inner arrays concatenate tokens and literal text.
-# Tokens retain their own colors; groups without available token data are omitted.
-separator = " · "
-
-context_label = "ctx"
-five_hour_label = "5h"
-weekly_label = "week"
-# Strictly above these percentages; 80% remains green and 95% remains amber.
-warning_percent = 80
-critical_percent = 95
-
-# Theme palette names or literal #RGB / #RRGGBB colors.
-# Palette names follow the active theme: red, green, yellow, blue, mauve,
-# teal, peach, text, subtext0, surface0.
-access_color = "red"
-directory_color = "green"
-branch_color = "blue"
-model_color = "mauve"
-effort_color = "mauve"
-usage_color = "green"
-warning_color = "yellow"
-critical_color = "red"
-separator_color = "text"
-background_color = "surface0"

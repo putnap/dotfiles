@@ -9,6 +9,97 @@
  mod sidebar;
  mod sound;
  mod tab_bar;
+--- a/src/config/io.rs
++++ b/src/config/io.rs
+@@ -94,11 +94,41 @@
+ }
+ 
+ fn read_optional_config(path: &Path) -> std::io::Result<Option<String>> {
+-    match std::fs::read_to_string(path) {
++    let base = match std::fs::read_to_string(path) {
+         Ok(content) => Ok(Some(content)),
+         Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(None),
+         Err(err) => Err(err),
+-    }
++    }?;
++    // Only the patched binary knows this extension. Stock config stays portable.
++    let extension = path.with_file_name("pane-footer.toml");
++    let footer = match std::fs::read_to_string(&extension) {
++        Ok(content) => content,
++        Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Ok(base),
++        Err(err) => return Err(err),
++    };
++    let invalid = |err: String| {
++        std::io::Error::new(
++            std::io::ErrorKind::InvalidData,
++            format!("{}: {err}", extension.display()),
++        )
++    };
++    let footer: super::PaneFooterConfig =
++        toml::from_str(&footer).map_err(|err| invalid(err.to_string()))?;
++    let mut value: toml::Table = toml::from_str(base.as_deref().unwrap_or(""))
++        .map_err(|err| invalid(format!("base config: {err}")))?;
++    let ui = value
++        .entry("ui")
++        .or_insert_with(|| toml::Value::Table(toml::Table::new()));
++    let ui = ui
++        .as_table_mut()
++        .ok_or_else(|| invalid("base ui must be a table".into()))?;
++    ui.insert(
++        "pane_footer".into(),
++        toml::Value::try_from(footer).map_err(|err| invalid(err.to_string()))?,
++    );
++    toml::to_string(&value)
++        .map(Some)
++        .map_err(|err| invalid(err.to_string()))
+ }
+ 
+ impl Config {
+@@ -724,6 +754,44 @@
+ #[cfg(test)]
+ mod tests {
+     use super::*;
++
++    #[test]
++    fn pane_footer_extension_is_optional_scoped_and_validated() {
++        let dir = std::env::temp_dir().join(format!(
++            "herdr-footer-config-{}-{}",
++            std::process::id(),
++            std::time::SystemTime::now()
++                .duration_since(std::time::UNIX_EPOCH)
++                .unwrap()
++                .as_nanos()
++        ));
++        std::fs::create_dir_all(&dir).unwrap();
++        let path = dir.join("config.toml");
++        let extension = dir.join("pane-footer.toml");
++        let base = "[theme]\nname='catppuccin'\n[session]\nresume_agents_on_restore=true\n";
++        std::fs::write(&path, base).unwrap();
++        assert_eq!(read_optional_config(&path).unwrap().as_deref(), Some(base));
++        std::fs::write(
++            &extension,
++            "enabled=true\nright=[['model',' ','effort'],'context']\n",
++        )
++        .unwrap();
++        let text = read_optional_config(&path).unwrap().unwrap();
++        let loaded = load_live_config_from_str(&text).unwrap();
++        assert!(loaded.config.ui.pane_footer.enabled);
++        assert!(loaded.diagnostics.is_empty());
++        assert_eq!(std::fs::read_to_string(&path).unwrap(), base);
++        std::fs::write(&extension, "enabled=true\nunknown=true\n").unwrap();
++        assert!(read_optional_config(&path)
++            .unwrap_err()
++            .to_string()
++            .contains("pane-footer.toml"));
++        std::fs::remove_file(&extension).unwrap();
++        let loaded =
++            load_live_config_from_str(&read_optional_config(&path).unwrap().unwrap()).unwrap();
++        assert!(!loaded.config.ui.pane_footer.enabled);
++        std::fs::remove_dir_all(dir).unwrap();
++    }
+ 
+     #[test]
+     fn upsert_top_level_bool_replaces_existing_value() {
 --- a/src/config/model.rs
 +++ b/src/config/model.rs
 @@ -940,6 +940,7 @@
