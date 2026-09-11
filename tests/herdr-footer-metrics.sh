@@ -60,11 +60,19 @@ done
 
     transcript = root / "claude-transcript.jsonl"
 
-    def record_mode(mode):
+    def append(record):
         with transcript.open("a") as stream:
-            stream.write(json.dumps({"type": "permission-mode", "permissionMode": mode}) + "\n")
+            stream.write(json.dumps(record) + "\n")
+
+    def record_mode(mode):
+        append({"type": "permission-mode", "permissionMode": mode})
 
     record_mode("plan")
+    # Entering plan mode writes no standalone record, so a switch can reach the
+    # transcript on a message alone, and the last reading in the file wins.
+    append({"type": "user", "message": {"role": "user", "content": "go"}, "permissionMode": "acceptEdits"})
+    # A record that only mentions the field elsewhere is not a reading of the mode.
+    append({"type": "assistant", "meta": {"permissionMode": "bypassPermissions"}})
     claude_sample("claude-session", model="Claude", context=41, permission="auto", measured_at=time.time(),
                   five_hour=7, weekly=61, five_hour_resets_at=later, weekly_resets_at=later,
                   transcript=str(transcript))
@@ -138,7 +146,7 @@ done
     assert first["footer_ctx"] == "32" and first["footer_access"] == "[workspace]", first
     assert published["w1:p2"]["footer_ctx"] == "41"
     # The transcript outranks the status line's own reading of the mode.
-    assert published["w1:p2"]["footer_access"] == "[plan]", published["w1:p2"]
+    assert published["w1:p2"]["footer_access"] == "[auto edits]", published["w1:p2"]
     assert published["w1:p4"]["footer_access"] == "[ask]", published["w1:p4"]
     # Usage belongs to the account, so the idle pane reports the newest reading, not its own.
     assert published["w1:p4"]["footer_ctx"] == "12", published["w1:p4"]
@@ -196,11 +204,11 @@ done
         assert published["w1:p1"]["footer_week"] == "88", published["w1:p1"]
         assert published["w1:p1"]["footer_5h"] == "4", published["w1:p1"]
         # Cycling the mode while idle reaches the footer without another logged turn.
-        record_mode("acceptEdits")
+        record_mode("plan")
         deadline = time.monotonic() + 5
-        while published.get("w1:p2", {}).get("footer_access") != "[auto edits]" and time.monotonic() < deadline:
+        while published.get("w1:p2", {}).get("footer_access") != "[plan]" and time.monotonic() < deadline:
             time.sleep(0.02)
-        assert published.get("w1:p2", {}).get("footer_access") == "[auto edits]", published.get("w1:p2")
+        assert published.get("w1:p2", {}).get("footer_access") == "[plan]", published.get("w1:p2")
         # A second collector must not sample the same socket generation.
         duplicate = subprocess.run(["bash", str(repo / "herdr/.config/herdr/footer/collect.sh"), "--once"],
                                    env=environment, capture_output=True, text=True, timeout=10)

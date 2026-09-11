@@ -27,7 +27,7 @@ INTERVAL = 0.25
 BACKOFF_LIMIT = 5.0
 QUOTA_INTERVAL = 120.0
 QUOTA_FIELDS = ("five_hour", "weekly", "five_hour_resets_at", "weekly_resets_at")
-MODE_RECORD = re.compile(rb'^\{.*"permission-mode".*$', re.M)
+MODE_RECORD = re.compile(rb'^\{.*"permissionMode".*$', re.M)
 
 
 def socket_generation():
@@ -265,9 +265,11 @@ class Pane:
                     record = json.loads(match.group())
                 except ValueError:
                     continue
-                # A message quoting the phrase matches the line pattern but is not the record.
-                if record.get("type") == "permission-mode" and record.get("permissionMode"):
-                    self.permission = record["permissionMode"]
+                # Message records carry the mode too, and a switch can be recorded only there.
+                # Reading the top level ignores a record that merely mentions the field.
+                mode = record.get("permissionMode")
+                if isinstance(mode, str) and mode:
+                    self.permission = mode
         return dict(sample, permission=self.permission) if self.permission else sample
 
     def publish(self, agent):
