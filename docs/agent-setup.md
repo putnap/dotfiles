@@ -32,6 +32,16 @@ suites. Codex uses the unmodified Nixpkgs package to avoid local source rebuilds
 Updates still follow the
 versions packaged in Nixpkgs and recorded in `flake.lock`.
 
+The `codex-remote` launchd agent names `/run/current-system/sw/bin/codex` rather
+than a store path. nix-darwin reloads a user agent whose plist differs from the
+installed one, and a store path changes on every rebuild, so baking one in
+restarted the app-server daemon on every single activation. The generated plist
+now carries no store path at all, so package changes leave it untouched. It also
+means the daemon keeps running the Codex it started with until something
+restarts it, which is the same trade the Herdr server makes. Note that `nixr`
+updates flake inputs first, so it can move Codex to a new version while sessions
+started on the old one are still attached.
+
 Once active work is finished, run `herdr server stop`, then reopen `herdr` to use
 the new binary. Stopping a server terminates its pane processes; the declared
 restore settings preserve sessions and their saved launch flags. Setup never

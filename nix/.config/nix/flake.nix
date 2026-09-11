@@ -112,12 +112,14 @@
             '';
           };
 
+        # A store path here would change on every rebuild, and nix-darwin reloads an
+        # agent whose plist differs, dropping the daemon and its Codex sessions.
         launchd.user.agents.codex-remote = {
-          command = "${config.system.path}/bin/codex app-server --remote-control --listen unix://";
+          command = "/run/current-system/sw/bin/codex app-server --remote-control --listen unix://";
           environment = {
             HOME = "/Users/${user}";
             CODEX_HOME = "/Users/${user}/.codex";
-            PATH = "${config.system.path}/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin";
+            PATH = "/run/current-system/sw/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin";
           };
           serviceConfig = {
             RunAtLoad = true;
