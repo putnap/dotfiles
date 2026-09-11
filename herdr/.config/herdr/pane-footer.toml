@@ -2,9 +2,10 @@
 # Stock Herdr ignores this file. Reload with prefix+r after editing.
 enabled = true
 
-# Available fields: access, directory, branch, model, effort, context, five_hour, weekly.
+# Available fields: access, mode, directory, branch, model, effort, context, five_hour, weekly.
+# "mode" is Codex's collaboration mode and is shown only when it is not the default one.
 # Remove a field to hide it; reorder or move it between sides. Missing data is omitted.
-left = ["access", "directory", "branch"]
+left = ["access", "mode", "directory", "branch"]
 right = [["model", " ", "effort"], "context", "five_hour", "weekly"]
 # Outer items use this separator. Inner arrays concatenate tokens and literal text.
 # Tokens retain their own colors; groups without available token data are omitted.
@@ -20,7 +21,8 @@ critical_percent = 95
 # Theme palette names or literal #RGB / #RRGGBB colors.
 # Palette names follow the active theme: red, green, yellow, blue, mauve,
 # teal, peach, text, subtext0, surface0.
-access_color = "yellow" # Bypass uses critical_color.
+access_color = "yellow" # Fallback for a badge access_colors does not name.
+mode_color = "teal"
 directory_color = "green"
 branch_color = "blue"
 model_color = "mauve"
@@ -30,3 +32,16 @@ warning_color = "yellow"
 critical_color = "red"
 separator_color = "text"
 background_color = "surface0"
+
+# Each permission badge takes the colour its agent already shows for that mode.
+# Keys are the badge text without brackets. This table must stay last: TOML reads
+# every key after it as part of it.
+[access_colors]
+plan = "teal"
+auto = "green"
+"auto edits" = "green"
+ask = "subtext0"
+"read only" = "blue"
+workspace = "yellow"
+"full access" = "peach"
+bypass = "red"

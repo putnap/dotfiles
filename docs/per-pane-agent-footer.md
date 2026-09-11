@@ -77,8 +77,19 @@ files from retired socket generations that no collector still holds.
 Presentation is configured in `herdr/.config/herdr/pane-footer.toml`: field order
 and side, colors, labels, separator, enablement, and percentage thresholds.
 Context percentages represent **used** context; a fresh session shows `ctx 0%`.
-Permission badges use `access_color` (yellow); `[bypass]` uses `critical_color`
-(red). Full access with approvals remains distinct from bypass. Claude's native
+Each permission badge takes the colour its own agent shows for that mode, so the
+footer and the agent's indicator read as one thing: teal for plan, green for auto
+and auto edits, dim for ask, blue for read only, yellow for workspace, peach for
+full access, and red for bypass. The `[access_colors]` table in
+`pane-footer.toml` holds that mapping, keyed by badge text without brackets, and
+`access_color` remains the fallback for a badge it does not name. Full access
+with approvals remains distinct from bypass.
+
+Codex sets a collaboration mode beside its sandbox, and the two are independent,
+so the `mode` field is its own badge rather than part of the permission one. It
+is omitted while that mode is the default, which it was in all 259 settings
+events across 31 rollout logs, so it costs nothing until it means something.
+Claude has no equivalent, since plan is one of its permission modes. Claude's native
 status callback supplies its metrics, but not the permission mode: the payload
 omits it, so the callback recovers it from the transcript and can lose that race
 and cache the previous mode until the next turn. The collector therefore follows

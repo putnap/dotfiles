@@ -101,7 +101,9 @@ writes immediately, and usage figures from the account every two minutes.
 Claude's permission badge follows its transcript for the same reason. Usage is account-wide, so every pane of one provider
 shows the newest reading rather than its own session's last one. Claude's status callback feeds the collector
 without printing another line. Independent pane collectors check for changes
-every 250 ms; normal permission badges are yellow and bypass is red.
+every 250 ms. Each permission badge takes the colour its agent shows for that
+mode, and a Codex pane grows a second badge when its collaboration mode is not
+the default one.
 
 Fork shortcuts also work while only the herdr package is Stowed: they resolve the shared helper from this checkout. Older Claude processes can use their exact PID/session registration. Codex processes started before the herdr integration was installed need to be resumed in a new CLI process to register their session identity; the fork command never guesses with `--last`.
 

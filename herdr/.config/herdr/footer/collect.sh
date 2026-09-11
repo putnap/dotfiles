@@ -299,8 +299,12 @@ class Pane:
                 "danger-full-access": "full access", "workspace-write": "workspace", "read-only": "read only",
             }.get(sandbox, "")
         model, effort = sample.get("model"), sample.get("effort")
+        # Codex sets a collaboration mode beside its sandbox; the default one is worth no room.
+        mode = sample.get("mode")
+        mode = mode.lower() if isinstance(mode, str) and mode.lower() != "default" else None
         tokens = {"footer_session": session_id, "footer_terminal": agent["terminal_id"] if not session_id else None,
                   "footer_left": None, "footer_access": f"[{access}]" if access else None,
+                  "footer_mode": f"[{mode}]" if mode else None,
                   "footer_dir": self.git_values[0], "footer_branch": self.git_values[1] or None,
                   "footer_model": " ".join(v for v in (model, effort) if isinstance(v, str)),
                   "footer_model_name": model, "footer_effort": effort}

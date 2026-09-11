@@ -9,9 +9,9 @@ printf '%s\n' '{"type":"turn_context","payload":{"model":"test","effort":"high",
   jq -Rnc --argjson previous '[{}]' -f "$scripts/collect.jq" |
   jq -e '. == {model:"test",effort:"high",cwd:null,approval:"never",sandbox:"danger-full-access"}' >/dev/null
 printf '%s\n' '{"type":"turn_context","payload":{"model":"test","effort":"high","approval_policy":"never","sandbox_policy":{"type":"danger-full-access"}}}' \
-  '{"type":"event_msg","payload":{"type":"thread_settings_applied","thread_settings":{"model":"astra","reasoning_effort":"low","approval_policy":"on-request","active_permission_profile":{"id":":workspace"}}}}' |
+  '{"type":"event_msg","payload":{"type":"thread_settings_applied","thread_settings":{"model":"astra","reasoning_effort":"low","approval_policy":"on-request","active_permission_profile":{"id":":workspace"},"collaboration_mode":{"mode":"plan"}}}}' |
   jq -Rnc --argjson previous '[{}]' -f "$scripts/collect.jq" |
-  jq -e '.approval == "on-request" and .sandbox == "workspace-write" and .model == "astra" and .effort == "low"' >/dev/null
+  jq -e '.approval == "on-request" and .sandbox == "workspace-write" and .model == "astra" and .effort == "low" and .mode == "plan"' >/dev/null
 # A custom profile carries no id, so the sandbox from the last turn stands.
 printf '%s\n' '{"type":"turn_context","payload":{"model":"test","effort":"high","approval_policy":"never","sandbox_policy":{"type":"read-only"}}}' \
   '{"type":"event_msg","payload":{"type":"thread_settings_applied","thread_settings":{"model":"astra","reasoning_effort":"low","approval_policy":"on-request","permission_profile":{"type":"managed"}}}}' |
@@ -140,10 +140,14 @@ done
     retained = root / "state/collector-2-2.lock"
     holder = retained.open("a+")
     fcntl.flock(holder, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    first = collect(sample)
+    first = collect(dict(sample, mode="default"))
+    assert first["footer_mode"] is None, first
     assert not abandoned.exists(), "an unheld lock from a retired generation was kept"
     assert retained.exists(), "a lock another collector still holds was removed"
     assert first["footer_ctx"] == "32" and first["footer_access"] == "[workspace]", first
+    # Codex's plan mode sits beside the permission badge rather than replacing it.
+    planning = collect(dict(sample, mode="plan"))
+    assert planning["footer_mode"] == "[plan]" and planning["footer_access"] == "[workspace]", planning
     assert published["w1:p2"]["footer_ctx"] == "41"
     # The transcript outranks the status line's own reading of the mode.
     assert published["w1:p2"]["footer_access"] == "[auto edits]", published["w1:p2"]
@@ -228,5 +232,5 @@ done
         collector.wait(timeout=5)
     server.shutdown()
     server.server_close()
-print("Collector integration passed: independent panes, idle permission updates, fresh session context,\n unknown values cleared, single instance per socket, abandoned locks swept,\n account usage shared across panes and refreshed for Codex,\n recovery from an unusable snapshot.")
+print("Collector integration passed: independent panes, idle permission updates, fresh session context,\n unknown values cleared, single instance per socket, abandoned locks swept,\n Codex collaboration mode beside the permission badge,\n account usage shared across panes and refreshed for Codex,\n recovery from an unusable snapshot.")
 PY

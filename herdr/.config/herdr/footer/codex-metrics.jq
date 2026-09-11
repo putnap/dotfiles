@@ -6,6 +6,6 @@ def context_used:
   else 100 - ((([($window - 12000 - ([$used - 12000, 0] | max)), 0] | max) / ($window - 12000) * 100) | round | [., 0] | max | [.,100] | min) end;
 def window($minutes):
   [.rate_limits.primary, .rate_limits.secondary] | map(select(.window_minutes == $minutes)) | .[0];
-{model, effort, cwd, measured_at, approval, sandbox, context:context_used,
+{model, effort, cwd, mode, measured_at, approval, sandbox, context:context_used,
  five_hour:window(300).used_percent, weekly:window(10080).used_percent,
  five_hour_resets_at:window(300).resets_at, weekly_resets_at:window(10080).resets_at}

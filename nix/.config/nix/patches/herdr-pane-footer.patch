@@ -120,14 +120,16 @@
              hide_tab_bar_when_single_tab: false,
 --- a/src/config/pane_footer.rs
 +++ b/src/config/pane_footer.rs
-@@ -0,0 +1,247 @@
+@@ -0,0 +1,266 @@
 +use super::sidebar::SidebarTokenColor;
 +use serde::{Deserialize, Serialize};
++use std::collections::HashMap;
 +
 +#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 +#[serde(rename_all = "snake_case")]
 +pub enum FooterField {
 +    Access,
++    Mode,
 +    Directory,
 +    Branch,
 +    Model,
@@ -265,6 +267,8 @@
 +    pub five_hour_label: String,
 +    pub weekly_label: String,
 +    pub access_color: FooterColor,
++    pub access_colors: HashMap<String, FooterColor>,
++    pub mode_color: FooterColor,
 +    pub directory_color: FooterColor,
 +    pub branch_color: FooterColor,
 +    pub model_color: FooterColor,
@@ -281,7 +285,7 @@
 +        use FooterPalette as P;
 +        Self {
 +            enabled: false,
-+            left: vec![Access.into(), Directory.into(), Branch.into()],
++            left: vec![Access.into(), Mode.into(), Directory.into(), Branch.into()],
 +            right: vec![
 +                FooterItem::Group(vec![
 +                    FooterAtom::Token(Model),
@@ -299,6 +303,21 @@
 +            five_hour_label: "5h".into(),
 +            weekly_label: "week".into(),
 +            access_color: FooterColor::Palette(P::Yellow),
++            // Each badge takes the colour its agent already shows for that mode.
++            access_colors: [
++                ("plan", P::Teal),
++                ("auto", P::Green),
++                ("auto edits", P::Green),
++                ("ask", P::Subtext0),
++                ("read only", P::Blue),
++                ("workspace", P::Yellow),
++                ("full access", P::Peach),
++                ("bypass", P::Red),
++            ]
++            .into_iter()
++            .map(|(name, color)| (name.to_owned(), FooterColor::Palette(color)))
++            .collect(),
++            mode_color: FooterColor::Palette(P::Teal),
 +            directory_color: FooterColor::Palette(P::Green),
 +            branch_color: FooterColor::Palette(P::Blue),
 +            model_color: FooterColor::Palette(P::Mauve),
@@ -488,7 +507,7 @@
  pub(crate) fn popup_pane_rects(app: &AppState, area: Rect) -> Option<(Rect, Rect)> {
 --- a/src/ui/pane_footer.rs
 +++ b/src/ui/pane_footer.rs
-@@ -0,0 +1,380 @@
+@@ -0,0 +1,392 @@
 +//! A presentation row outside the PTY viewport; values come from pane metadata.
 +use super::text::{display_width, truncate_end};
 +use crate::{
@@ -537,11 +556,11 @@
 +    palette: &Palette,
 +) -> Option<(String, Color)> {
 +    let value = value?;
-+    let color = if value == "[bypass]" {
-+        cfg.critical_color
-+    } else {
-+        cfg.access_color
-+    };
++    let color = cfg
++        .access_colors
++        .get(value.trim_start_matches('[').trim_end_matches(']'))
++        .copied()
++        .unwrap_or(cfg.access_color);
 +    Some((value.to_owned(), color.resolve(palette)))
 +}
 +fn metric(
@@ -704,6 +723,7 @@
 +    let part = |field: FooterField| -> Option<(String, Color)> {
 +        let (text, color) = match field {
 +            FooterField::Access => return access(value("footer_access"), cfg, &app.palette),
++            FooterField::Mode => (value("footer_mode")?, cfg.mode_color),
 +            FooterField::Directory => {
 +                (value("footer_dir").unwrap_or(fallback), cfg.directory_color)
 +            }
@@ -837,19 +857,30 @@
 +        );
 +    }
 +    #[test]
-+    fn pane_footer_permissions_distinguish_bypass() {
++    fn pane_footer_permissions_take_the_colour_their_agent_shows() {
 +        let palette = AppState::test_new().palette;
 +        let cfg = PaneFooterConfig::default();
 +        assert_eq!(access(None, &cfg, &palette), None);
-+        for label in ["[workspace]", "[read only]", "[auto]", "[full access]"] {
++        for (label, color) in [
++            ("[plan]", palette.teal),
++            ("[auto]", palette.green),
++            ("[auto edits]", palette.green),
++            ("[ask]", palette.subtext0),
++            ("[read only]", palette.blue),
++            ("[workspace]", palette.yellow),
++            ("[full access]", palette.peach),
++            ("[bypass]", palette.red),
++        ] {
 +            assert_eq!(
 +                access(Some(label), &cfg, &palette),
-+                Some((label.into(), palette.yellow))
++                Some((label.into(), color)),
++                "{label}"
 +            );
 +        }
++        // An unmapped badge stays legible on the shared fallback.
 +        assert_eq!(
-+            access(Some("[bypass]"), &cfg, &palette),
-+            Some(("[bypass]".into(), palette.red))
++            access(Some("[something else]"), &cfg, &palette),
++            Some(("[something else]".into(), palette.yellow))
 +        );
 +    }
 +    #[test]

@@ -7,7 +7,7 @@ reduce inputs as $line ($previous[0];
   elif $row.type == "event_msg" and $row.payload.type == "thread_settings_applied" then
     $row.payload.thread_settings as $settings |
     .model = $settings.model | .effort = $settings.reasoning_effort | .cwd = $settings.cwd |
-    .approval = $settings.approval_policy |
+    .approval = $settings.approval_policy | .mode = $settings.collaboration_mode.mode |
     # A built-in profile names the sandbox; a custom one leaves the last turn's value standing.
     (if $settings.active_permission_profile.id == ":danger-full-access" then .sandbox = "danger-full-access"
      elif $settings.active_permission_profile.id == ":workspace" then .sandbox = "workspace-write"
