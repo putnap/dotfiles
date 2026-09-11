@@ -17,6 +17,8 @@ bash "$repo/agents/.config/agent-setup/apply.sh" --repo "$repo" --home "$home" -
 jq -e '.permissions.allow == ["Bash(pnpm:*)"] and .unknown == 42' "$home/.claude/settings.json" >/dev/null
 dasel -i toml -o json < "$home/.codex/config.toml" | jq -e '.sandbox_mode == "workspace-write" and .projects["/example"].trust_level == "trusted"' >/dev/null
 dasel -i toml -o json < "$home/.codex/config.toml" | jq -e '.hooks.state.example.trusted_hash == "keep-trust" and .hooks.managed_dir == "/example/hooks"' >/dev/null
+dasel -i toml -o json < "$home/.codex/config.toml" | jq -e '.tui.keymap.global.open_transcript == "ctrl-o" and .tui.keymap.global.copy == "alt-c" and .tui.keymap.composer.submit == ["enter"]' >/dev/null
+dasel -i toml -o json < "$home/.codex/config.toml" | jq -e '.tui.status_line == []' >/dev/null
 [[ $home/.claude/CLAUDE.md -ef $repo/agents/.agents/AGENTS.md ]]
 [[ -L $home/.claude/skills/rearchitect ]]
 bash "$repo/agents/.config/agent-setup/apply.sh" --repo "$repo" --home "$home" --apply > "$scratch/second"

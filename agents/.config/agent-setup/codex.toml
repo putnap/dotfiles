@@ -13,12 +13,13 @@ network_access = false
 [tui]
 notifications = false
 theme = "catppuccin-mocha"
-status_line = [] # Herdr owns the per-session footer.
+status_line = [] # Preserve Codex's keypress hints.
 status_line_use_colors = true
 
 [tui.keymap.global]
 open_transcript = "ctrl-o"
+copy = "alt-c"
 open_external_editor = "ctrl-g"
 
 [tui.keymap.composer]
-submit = ["enter", "ctrl-m"]
+submit = ["enter"]
