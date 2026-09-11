@@ -27,6 +27,7 @@ INTERVAL = 0.25
 BACKOFF_LIMIT = 5.0
 QUOTA_INTERVAL = 120.0
 QUOTA_FIELDS = ("five_hour", "weekly", "five_hour_resets_at", "weekly_resets_at")
+MODE_RECORD = re.compile(rb'^\{.*"permission-mode".*$', re.M)
 
 
 def socket_generation():
@@ -154,6 +155,11 @@ class Pane:
         self.pending = b""
         self.log_state = {}
         self.sample = {}
+        self.transcript = None
+        self.transcript_offset = 0
+        self.transcript_generation = None
+        self.transcript_pending = b""
+        self.permission = None
         self.git_key = None
         self.git_checked = 0
         self.git_values = ("", "")
@@ -230,13 +236,47 @@ class Pane:
             sample = read_json(directory / "start-data.json")
         return sample
 
+    def claude(self, session_id):
+        sample = read_json(root / "claude" / f"{session_id}.json") or {}
+        # The status line reports no permission mode, so follow the transcript it names instead.
+        named = sample.get("transcript")
+        if not named:
+            return sample
+        path = Path(named)
+        if path != self.transcript:
+            self.transcript, self.transcript_generation = path, None
+        try:
+            info = path.stat()
+        except OSError:
+            return sample
+        generation = (info.st_ino, info.st_birthtime)
+        if generation != self.transcript_generation or info.st_size < self.transcript_offset:
+            # A replaced transcript is read whole, so a mode set before this pane opened is seen.
+            self.transcript_offset, self.transcript_pending, self.permission = 0, b"", None
+            self.transcript_generation = generation
+        if info.st_size != self.transcript_offset:
+            with path.open("rb") as stream:
+                stream.seek(self.transcript_offset)
+                data = self.transcript_pending + stream.read()
+                self.transcript_offset = stream.tell()
+            complete, _, self.transcript_pending = data.rpartition(b"\n")
+            for match in MODE_RECORD.finditer(complete):
+                try:
+                    record = json.loads(match.group())
+                except ValueError:
+                    continue
+                # A message quoting the phrase matches the line pattern but is not the record.
+                if record.get("type") == "permission-mode" and record.get("permissionMode"):
+                    self.permission = record["permissionMode"]
+        return dict(sample, permission=self.permission) if self.permission else sample
+
     def publish(self, agent):
         provider, session_id = identity(agent)
         if session_id and not re.fullmatch(r"[a-zA-Z0-9_-]+", session_id):
             return
         cwd = agent.get("foreground_cwd") or agent["cwd"]
         sample = (self.codex(agent, session_id, cwd) if provider == "codex"
-                  else read_json(root / "claude" / f"{session_id}.json")) or {}
+                  else self.claude(session_id)) or {}
         now = time.monotonic()
         if cwd != self.git_key or now - self.git_checked >= 5:
             try:

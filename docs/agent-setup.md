@@ -95,9 +95,10 @@ Claude's teammate preview moves to Alt+O. Ctrl+Shift+Minus stays herdr split; Cl
 Both agents use Herdr's themed per-pane footer: directory, branch, access badge,
 model and effort, context used, and reported usage limits. Codex keeps its native
 Catppuccin syntax theme, keypress hints, and native context indicator. Codex
-uses rollout metadata for its footer, so idle permission and context changes
-may wait for another logged turn; its usage figures are read from the account
-every two minutes instead. Usage is account-wide, so every pane of one provider
+uses rollout metadata for its footer, so idle context changes may wait for
+another logged turn; permission changes are read from the settings event Codex
+writes immediately, and usage figures from the account every two minutes.
+Claude's permission badge follows its transcript for the same reason. Usage is account-wide, so every pane of one provider
 shows the newest reading rather than its own session's last one. Claude's status callback feeds the collector
 without printing another line. Independent pane collectors check for changes
 every 250 ms; normal permission badges are yellow and bypass is red.

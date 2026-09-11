@@ -47,8 +47,13 @@ API. Codex does, and a pane reads it every two minutes through the same
 read-only `account/rateLimits/read` request used at startup, so an idle Codex
 pane no longer waits for a logged turn.
 
-Codex uses the unmodified Nixpkgs package and the rollout fallback.
-Idle permission and context changes may wait for another logged turn. The
+Codex uses the unmodified Nixpkgs package and the rollout fallback. Idle
+context changes still wait for another logged turn, but a permission change no
+longer does. Codex writes a `thread_settings_applied` event the moment the mode
+is switched, with no turn alongside it, and the collector reads the approval
+policy, model, and effort from it. The two modes that toggling selects name
+their sandbox through the permission profile id; a custom profile carries no id,
+so the sandbox from the last turn stands rather than being guessed. The
 collector still accepts live metadata from existing patched processes after
 checking process identity, socket, and file age.
 
@@ -74,8 +79,14 @@ and side, colors, labels, separator, enablement, and percentage thresholds.
 Context percentages represent **used** context; a fresh session shows `ctx 0%`.
 Permission badges use `access_color` (yellow); `[bypass]` uses `critical_color`
 (red). Full access with approvals remains distinct from bypass. Claude's native
-status callback still supplies its metrics and reads the latest transcript
-`permissionMode`; the collector does not invent permissions when none are known.
+status callback supplies its metrics, but not the permission mode: the payload
+omits it, so the callback recovers it from the transcript and can lose that race
+and cache the previous mode until the next turn. The collector therefore follows
+the transcript the callback names, reading it whole once and then only the bytes
+appended since, so cycling the mode while idle reaches the footer within one
+sampling interval. A line is parsed and its type checked before it counts, since
+a message quoting the record would otherwise match. The collector does not
+invent permissions when none are known.
 
 Codex retains its native input colors, context indicator, and keypress hints.
 The local Codex source patch was removed because rebuilding on frequent upgrades

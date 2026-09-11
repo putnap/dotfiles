@@ -8,6 +8,15 @@ jq -c -f "$scripts/codex-metrics.jq" <<< '{}' | jq -e '.context == null and .fiv
 printf '%s\n' '{"type":"turn_context","payload":{"model":"test","effort":"high","approval_policy":"never","sandbox_policy":{"type":"danger-full-access"}}}' '{"type":"response_item","payload":{"text":"must not remain"}}' 'invalid' |
   jq -Rnc --argjson previous '[{}]' -f "$scripts/collect.jq" |
   jq -e '. == {model:"test",effort:"high",cwd:null,approval:"never",sandbox:"danger-full-access"}' >/dev/null
+printf '%s\n' '{"type":"turn_context","payload":{"model":"test","effort":"high","approval_policy":"never","sandbox_policy":{"type":"danger-full-access"}}}' \
+  '{"type":"event_msg","payload":{"type":"thread_settings_applied","thread_settings":{"model":"astra","reasoning_effort":"low","approval_policy":"on-request","active_permission_profile":{"id":":workspace"}}}}' |
+  jq -Rnc --argjson previous '[{}]' -f "$scripts/collect.jq" |
+  jq -e '.approval == "on-request" and .sandbox == "workspace-write" and .model == "astra" and .effort == "low"' >/dev/null
+# A custom profile carries no id, so the sandbox from the last turn stands.
+printf '%s\n' '{"type":"turn_context","payload":{"model":"test","effort":"high","approval_policy":"never","sandbox_policy":{"type":"read-only"}}}' \
+  '{"type":"event_msg","payload":{"type":"thread_settings_applied","thread_settings":{"model":"astra","reasoning_effort":"low","approval_policy":"on-request","permission_profile":{"type":"managed"}}}}' |
+  jq -Rnc --argjson previous '[{}]' -f "$scripts/collect.jq" |
+  jq -e '.approval == "on-request" and .sandbox == "read-only"' >/dev/null
 printf '%s\n' 'metric fixtures passed'
 # Exercise the running collector through its socket protocol and native metadata files.
 python3 - "$repo" <<'PY'
@@ -49,8 +58,16 @@ done
     def claude_sample(name, **fields):
         (root / f"state/claude/{name}.json").write_text(json.dumps(fields))
 
+    transcript = root / "claude-transcript.jsonl"
+
+    def record_mode(mode):
+        with transcript.open("a") as stream:
+            stream.write(json.dumps({"type": "permission-mode", "permissionMode": mode}) + "\n")
+
+    record_mode("plan")
     claude_sample("claude-session", model="Claude", context=41, permission="auto", measured_at=time.time(),
-                  five_hour=7, weekly=61, five_hour_resets_at=later, weekly_resets_at=later)
+                  five_hour=7, weekly=61, five_hour_resets_at=later, weekly_resets_at=later,
+                  transcript=str(transcript))
     claude_sample("idle-session", model="Claude", context=12, permission="default", measured_at=time.time() - 36000,
                   five_hour=1, weekly=52, five_hour_resets_at=later, weekly_resets_at=later)
     agents = [
@@ -120,6 +137,9 @@ done
     assert retained.exists(), "a lock another collector still holds was removed"
     assert first["footer_ctx"] == "32" and first["footer_access"] == "[workspace]", first
     assert published["w1:p2"]["footer_ctx"] == "41"
+    # The transcript outranks the status line's own reading of the mode.
+    assert published["w1:p2"]["footer_access"] == "[plan]", published["w1:p2"]
+    assert published["w1:p4"]["footer_access"] == "[ask]", published["w1:p4"]
     # Usage belongs to the account, so the idle pane reports the newest reading, not its own.
     assert published["w1:p4"]["footer_ctx"] == "12", published["w1:p4"]
     for pane in ("w1:p2", "w1:p4"):
@@ -127,14 +147,16 @@ done
     # A window that already rolled over is dropped rather than reported as current.
     earlier = time.time() - 60
     claude_sample("claude-session", model="Claude", context=41, permission="auto", measured_at=time.time(),
-                  five_hour=7, weekly=61, five_hour_resets_at=later, weekly_resets_at=earlier)
+                  five_hour=7, weekly=61, five_hour_resets_at=later, weekly_resets_at=earlier,
+                  transcript=str(transcript))
     claude_sample("idle-session", model="Claude", context=12, permission="default", measured_at=time.time() - 36000,
                   five_hour=1, weekly=52, five_hour_resets_at=later, weekly_resets_at=earlier)
     collect(sample)
     assert published["w1:p2"]["footer_5h"] == "7", published["w1:p2"]
     assert published["w1:p2"]["footer_week"] is None, published["w1:p2"]
     claude_sample("claude-session", model="Claude", context=41, permission="auto", measured_at=time.time(),
-                  five_hour=7, weekly=61, five_hour_resets_at=later, weekly_resets_at=later)
+                  five_hour=7, weekly=61, five_hour_resets_at=later, weekly_resets_at=later,
+                  transcript=str(transcript))
     claude_sample("idle-session", model="Claude", context=12, permission="default", measured_at=time.time() - 36000,
                   five_hour=1, weekly=52, five_hour_resets_at=later, weekly_resets_at=later)
     # No rollout or new registry entry exists yet, but the TUI has changed permissions and cleared.
@@ -173,6 +195,12 @@ done
             time.sleep(0.05)
         assert published["w1:p1"]["footer_week"] == "88", published["w1:p1"]
         assert published["w1:p1"]["footer_5h"] == "4", published["w1:p1"]
+        # Cycling the mode while idle reaches the footer without another logged turn.
+        record_mode("acceptEdits")
+        deadline = time.monotonic() + 5
+        while published.get("w1:p2", {}).get("footer_access") != "[auto edits]" and time.monotonic() < deadline:
+            time.sleep(0.02)
+        assert published.get("w1:p2", {}).get("footer_access") == "[auto edits]", published.get("w1:p2")
         # A second collector must not sample the same socket generation.
         duplicate = subprocess.run(["bash", str(repo / "herdr/.config/herdr/footer/collect.sh"), "--once"],
                                    env=environment, capture_output=True, text=True, timeout=10)
