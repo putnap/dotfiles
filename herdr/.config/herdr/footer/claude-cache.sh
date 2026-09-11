@@ -17,5 +17,7 @@ file=$(mktemp "$root/claude/.sample.XXXXXX")
 trap 'rm -f "$file"' EXIT
 jq --argjson permission "$permission" '{session_id, permission:$permission, cwd:(.workspace.current_dir // .cwd), model:.model.display_name, effort:.effort.level,
  context:.context_window.used_percentage, five_hour:.rate_limits.five_hour.used_percentage,
- weekly:.rate_limits.seven_day.used_percentage, measured_at:now}' <<< "$input" > "$file"
+ weekly:.rate_limits.seven_day.used_percentage,
+ five_hour_resets_at:.rate_limits.five_hour.resets_at,
+ weekly_resets_at:.rate_limits.seven_day.resets_at, measured_at:now}' <<< "$input" > "$file"
 mv "$file" "$root/claude/$id.json"

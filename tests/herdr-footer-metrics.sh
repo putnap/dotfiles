@@ -28,13 +28,38 @@ with tempfile.TemporaryDirectory(prefix="herdr-footer-test-") as directory:
     socket_path = str(root / "herdr.sock")
     native = root / "codex/herdr" / f"{os.getpid()}.json"
     native.parent.mkdir(parents=True)
+    # A stub app-server, so the account usage refresh is exercised without the network.
+    (root / "bin").mkdir()
+    stub = root / "bin/codex"
+    stub.write_text("""#!/usr/bin/env bash
+set -euo pipefail
+[[ $1 == app-server ]] || exit 9
+while IFS= read -r line; do
+  case $(jq -r '.id // empty' <<< "$line") in
+    1) printf '%s\\n' '{"id":1,"result":{}}';;
+    2) printf '%s\\n' '{"id":2,"result":{"config":{"model":"stub","model_reasoning_effort":"low","approval_policy":"never","sandbox_mode":"read-only"}}}';;
+    3) printf '%s\\n' '{"id":3,"result":{"rateLimits":{"primary":{"usedPercent":88,"windowDurationMins":10080,"resetsAt":RESET},"secondary":{"usedPercent":4,"windowDurationMins":300,"resetsAt":RESET}}}}';;
+  esac
+done
+""".replace("RESET", str(int(time.time() + 3600))))
+    stub.chmod(0o755)
     (root / "state/claude").mkdir(parents=True)
-    (root / "state/claude/claude-session.json").write_text(json.dumps({"model": "Claude", "context": 41, "permission": "auto"}))
+    later = time.time() + 3600
+
+    def claude_sample(name, **fields):
+        (root / f"state/claude/{name}.json").write_text(json.dumps(fields))
+
+    claude_sample("claude-session", model="Claude", context=41, permission="auto", measured_at=time.time(),
+                  five_hour=7, weekly=61, five_hour_resets_at=later, weekly_resets_at=later)
+    claude_sample("idle-session", model="Claude", context=12, permission="default", measured_at=time.time() - 36000,
+                  five_hour=1, weekly=52, five_hour_resets_at=later, weekly_resets_at=later)
     agents = [
         {"agent": "codex", "terminal_id": "codex-terminal", "pane_id": "w1:p1", "cwd": directory,
          "agent_session": {"value": "old-session", "kind": "id"}},
         {"agent": "claude", "terminal_id": "claude-terminal", "pane_id": "w1:p2", "cwd": directory,
          "agent_session": {"value": "claude-session", "kind": "id"}},
+        {"agent": "claude", "terminal_id": "idle-terminal", "pane_id": "w1:p4", "cwd": directory,
+         "agent_session": {"value": "idle-session", "kind": "id"}},
         # A terminal still being restored reports no agent yet.
         {"terminal_id": "restoring-terminal", "pane_id": "w1:p3", "cwd": directory},
     ]
@@ -70,7 +95,8 @@ with tempfile.TemporaryDirectory(prefix="herdr-footer-test-") as directory:
     server.daemon_threads = True
     threading.Thread(target=server.serve_forever, daemon=True).start()
     environment = dict(os.environ, HERDR_SOCKET_PATH=socket_path, HERDR_FOOTER_STATE_DIR=str(root / "state"),
-                       CODEX_HOME=str(root / "codex"), LC_ALL="C")
+                       CODEX_HOME=str(root / "codex"), LC_ALL="C",
+                       PATH=f'{root / "bin"}{os.pathsep}{os.environ["PATH"]}')
 
     def collect(sample):
         global process_reads
@@ -94,6 +120,23 @@ with tempfile.TemporaryDirectory(prefix="herdr-footer-test-") as directory:
     assert retained.exists(), "a lock another collector still holds was removed"
     assert first["footer_ctx"] == "32" and first["footer_access"] == "[workspace]", first
     assert published["w1:p2"]["footer_ctx"] == "41"
+    # Usage belongs to the account, so the idle pane reports the newest reading, not its own.
+    assert published["w1:p4"]["footer_ctx"] == "12", published["w1:p4"]
+    for pane in ("w1:p2", "w1:p4"):
+        assert published[pane]["footer_5h"] == "7" and published[pane]["footer_week"] == "61", published[pane]
+    # A window that already rolled over is dropped rather than reported as current.
+    earlier = time.time() - 60
+    claude_sample("claude-session", model="Claude", context=41, permission="auto", measured_at=time.time(),
+                  five_hour=7, weekly=61, five_hour_resets_at=later, weekly_resets_at=earlier)
+    claude_sample("idle-session", model="Claude", context=12, permission="default", measured_at=time.time() - 36000,
+                  five_hour=1, weekly=52, five_hour_resets_at=later, weekly_resets_at=earlier)
+    collect(sample)
+    assert published["w1:p2"]["footer_5h"] == "7", published["w1:p2"]
+    assert published["w1:p2"]["footer_week"] is None, published["w1:p2"]
+    claude_sample("claude-session", model="Claude", context=41, permission="auto", measured_at=time.time(),
+                  five_hour=7, weekly=61, five_hour_resets_at=later, weekly_resets_at=later)
+    claude_sample("idle-session", model="Claude", context=12, permission="default", measured_at=time.time() - 36000,
+                  five_hour=1, weekly=52, five_hour_resets_at=later, weekly_resets_at=later)
     # No rollout or new registry entry exists yet, but the TUI has changed permissions and cleared.
     fresh = collect(dict(sample, session_id="new-session", context=0, approval="never",
                          permission_label="Full Access", sandbox={"type": "danger-full-access"}))
@@ -124,6 +167,12 @@ with tempfile.TemporaryDirectory(prefix="herdr-footer-test-") as directory:
         assert published["w1:p1"]["footer_ctx"] == "0", "running collector kept stale context"
         assert published["w1:p1"]["footer_access"] == "[bypass]"
         print(f"Running collector refreshed permission and context in {elapsed:.3f}s")
+        # Codex usage is read from the account, so a pane reports it without logging a turn.
+        deadline = time.monotonic() + 20
+        while published["w1:p1"].get("footer_week") != "88" and time.monotonic() < deadline:
+            time.sleep(0.05)
+        assert published["w1:p1"]["footer_week"] == "88", published["w1:p1"]
+        assert published["w1:p1"]["footer_5h"] == "4", published["w1:p1"]
         # A second collector must not sample the same socket generation.
         duplicate = subprocess.run(["bash", str(repo / "herdr/.config/herdr/footer/collect.sh"), "--once"],
                                    env=environment, capture_output=True, text=True, timeout=10)
@@ -143,5 +192,5 @@ with tempfile.TemporaryDirectory(prefix="herdr-footer-test-") as directory:
         collector.wait(timeout=5)
     server.shutdown()
     server.server_close()
-print("Collector integration passed: independent panes, idle permission updates, fresh session context,\n unknown values cleared, single instance per socket, abandoned locks swept,\n recovery from an unusable snapshot.")
+print("Collector integration passed: independent panes, idle permission updates, fresh session context,\n unknown values cleared, single instance per socket, abandoned locks swept,\n account usage shared across panes and refreshed for Codex,\n recovery from an unusable snapshot.")
 PY

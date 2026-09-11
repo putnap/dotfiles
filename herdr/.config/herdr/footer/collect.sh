@@ -3,6 +3,7 @@ set -euo pipefail
 scripts=$(cd "$(dirname "$0")" && pwd -P)
 source "$scripts/state-dir.sh"
 exec python3 - "$scripts" "$root" "$@" <<'PY'
+import datetime
 import fcntl
 import json
 import logging
@@ -24,6 +25,8 @@ os.umask(0o077)
 logging.basicConfig(format="%(asctime)s %(levelname)s %(message)s")
 INTERVAL = 0.25
 BACKOFF_LIMIT = 5.0
+QUOTA_INTERVAL = 120.0
+QUOTA_FIELDS = ("five_hour", "weekly", "five_hour_resets_at", "weekly_resets_at")
 
 
 def socket_generation():
@@ -55,7 +58,9 @@ for stale in root.glob("collector-*.lock"):
 stop = threading.Event()
 agents = {}
 workers = {}
+quotas = {}
 state_lock = threading.Lock()
+quota_lock = threading.Lock()
 once = "--once" in sys.argv[3:]
 
 
@@ -100,6 +105,37 @@ def read_json(path):
 
 def identity(agent):
     return agent["agent"], (agent.get("agent_session") or {}).get("value", "")
+
+
+def observed_at(value):
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        try:
+            return datetime.datetime.fromisoformat(value.replace("Z", "+00:00")).timestamp()
+        except ValueError:
+            return None
+    return None
+
+
+def share_quota(provider, sample):
+    """Record this observation of the account's usage and answer with the freshest one."""
+    reading = {field: sample.get(field) for field in QUOTA_FIELDS}
+    measured = observed_at(sample.get("measured_at"))
+    usable = measured is not None and any(reading[field] is not None for field in ("five_hour", "weekly"))
+    with quota_lock:
+        known = quotas.get(provider)
+        if usable and (known is None or measured >= known["measured_at"]):
+            quotas[provider] = dict(reading, measured_at=measured)
+        return dict(quotas.get(provider) or {})
+
+
+def quota_value(quota, key):
+    # A window that has already rolled over says nothing about the one now running.
+    resets_at = quota.get(f"{key}_resets_at")
+    if isinstance(resets_at, (int, float)) and resets_at <= time.time():
+        return None
+    return quota.get(key)
 
 
 def command(*args, cwd=None, input=None):
@@ -226,8 +262,9 @@ class Pane:
                   "footer_dir": self.git_values[0], "footer_branch": self.git_values[1] or None,
                   "footer_model": " ".join(v for v in (model, effort) if isinstance(v, str)),
                   "footer_model_name": model, "footer_effort": effort}
+        quota = share_quota(provider, sample)
         for key, token in (("context", "footer_ctx"), ("five_hour", "footer_5h"), ("weekly", "footer_week")):
-            value = sample.get(key)
+            value = sample.get(key) if key == "context" else quota_value(quota, key)
             tokens[token] = str(value) if isinstance(value, (int, float)) else None
         tokens = {k: v[:80] if isinstance(v, str) else v for k, v in tokens.items()}
         if tokens == self.published and now - self.published_at < 5:
@@ -244,6 +281,32 @@ class Pane:
         rpc("pane.report_metadata", {"pane_id": current["pane_id"], "source": "user:pane-footer",
                                       "ttl_ms": 15000, "tokens": tokens})
         self.published, self.published_at = tokens, now
+
+
+def scan_claude_quota():
+    # Every session's last reading is on disk, including sessions with no pane open.
+    for path in (root / "claude").glob("*.json"):
+        share_quota("claude", read_json(path) or {})
+
+
+def account_usage():
+    """Codex serves account usage read-only, so an idle pane need not wait for a logged turn."""
+    directory = root / "codex-quota"
+    directory.mkdir(exist_ok=True)
+    while not stop.is_set():
+        with state_lock:
+            present = any(a.get("agent") == "codex" for a in agents.values())
+        if not present:
+            # Poll at the sampling rate until there is a Codex pane worth keeping current.
+            stop.wait(INTERVAL)
+            continue
+        try:
+            subprocess.run(["bash", str(scripts / "codex-start-data.sh"), str(directory)],
+                           cwd=str(Path.home()), check=True, stdout=subprocess.DEVNULL)
+            share_quota("codex", read_json(directory / "start-data.json") or {})
+        except Exception:
+            report("footer account usage refresh failed")
+        stop.wait(QUOTA_INTERVAL)
 
 
 def worker(terminal):
@@ -266,6 +329,9 @@ def worker(terminal):
 
 for number in (signal.SIGINT, signal.SIGTERM):
     signal.signal(number, lambda *_: stop.set())
+scan_claude_quota()
+if not once:
+    threading.Thread(target=account_usage, daemon=True).start()
 failures = 0
 try:
     while not stop.is_set() and socket_generation() == generation:

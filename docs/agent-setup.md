@@ -96,7 +96,9 @@ Both agents use Herdr's themed per-pane footer: directory, branch, access badge,
 model and effort, context used, and reported usage limits. Codex keeps its native
 Catppuccin syntax theme, keypress hints, and native context indicator. Codex
 uses rollout metadata for its footer, so idle permission and context changes
-may wait for another logged turn. Claude's status callback feeds the collector
+may wait for another logged turn; its usage figures are read from the account
+every two minutes instead. Usage is account-wide, so every pane of one provider
+shows the newest reading rather than its own session's last one. Claude's status callback feeds the collector
 without printing another line. Independent pane collectors check for changes
 every 250 ms; normal permission badges are yellow and bypass is red.
 

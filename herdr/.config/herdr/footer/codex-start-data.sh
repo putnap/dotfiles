@@ -30,7 +30,8 @@ while IFS= read -r -t 10 line <&4; do
   ((count < 2)) || break
 done
 [[ -f $tmp/config && -f $tmp/limits ]] || exit 1
-jq -s '.[0] * .[1] | .rate_limits as $r | . + {
- five_hour:([$r.primary,$r.secondary] | map(select(.windowDurationMins == 300)) | .[0].usedPercent),
- weekly:([$r.primary,$r.secondary] | map(select(.windowDurationMins == 10080)) | .[0].usedPercent)} | del(.rate_limits)' "$tmp/config" "$tmp/limits" > "$tmp/sample"
+jq -s '.[0] * .[1] | .rate_limits as $r |
+ def window($mins): [$r.primary,$r.secondary] | map(select(.windowDurationMins == $mins)) | .[0];
+ . + {measured_at:now, five_hour:window(300).usedPercent, weekly:window(10080).usedPercent,
+ five_hour_resets_at:window(300).resetsAt, weekly_resets_at:window(10080).resetsAt} | del(.rate_limits)' "$tmp/config" "$tmp/limits" > "$tmp/sample"
 mv "$tmp/sample" "$dir/start-data.json"

@@ -36,8 +36,18 @@ updates, and attached terminal rendering at narrow and wide sizes. Broader mouse
 and 15-pane performance verification remains before production rollout. Native
 Claude and Codex permission flags were verified across repeated server restores.
 
-Quota readings are the last observation, not a continuously queried account
-endpoint. Codex uses the unmodified Nixpkgs package and the rollout fallback.
+The five-hour and weekly figures measure the account, not the session, so the
+newest reading any session observed is what every pane of that provider shows.
+Without this an idle pane reported its own last observation, which drifted by
+nine points over a day. The collector seeds those readings from every session's
+sample file at startup, and drops a window whose reset time has passed rather
+than presenting a rolled-over percentage as current. Claude has no read-only
+usage endpoint, so its figures still advance only when some session calls the
+API. Codex does, and a pane reads it every two minutes through the same
+read-only `account/rateLimits/read` request used at startup, so an idle Codex
+pane no longer waits for a logged turn.
+
+Codex uses the unmodified Nixpkgs package and the rollout fallback.
 Idle permission and context changes may wait for another logged turn. The
 collector still accepts live metadata from existing patched processes after
 checking process identity, socket, and file age.
