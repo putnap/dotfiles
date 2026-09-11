@@ -23,9 +23,14 @@ the same automatic setup. To review settings changes without applying them, run
 
 Production Herdr uses `nix/.config/nix/herdr-package.nix`, the same package as the
 preview: pane footer, popup titles, and preserved launch flags on restore. The
-package is guarded to Herdr 0.9.0 and runs the targeted Rust tests. Build just
-the binary with `nix build ./nix/.config/nix#herdr`. `nixr` also updates flake inputs and may select a newer
-Herdr version that needs its patches reviewed.
+package runs the targeted Rust tests. Build just the binary with
+`nix build ./nix/.config/nix#herdr`. `nixr` updates flake inputs and attempts the
+Herdr patches on the selected version, without an exact-version guard.
+Patch application, compilation, failing regression tests, or an empty regression
+test selection fail the build before activation. Herdr checks all three patch
+suites. Codex uses the unmodified Nixpkgs package to avoid local source rebuilds.
+Updates still follow the
+versions packaged in Nixpkgs and recorded in `flake.lock`.
 
 Once active work is finished, run `herdr server stop`, then reopen `herdr` to use
 the new binary. Stopping a server terminates its pane processes; the declared
@@ -83,14 +88,17 @@ The default agent is Codex for this trial. Claude's pane entrypoint retains `--d
 | prefix + Alt+M | Toggle Peon sounds |
 | Ctrl+G in either agent | External editor (`EDITOR=nvim`) |
 | Ctrl+O in either agent | Native transcript view |
+| Alt+C in Codex | Copy |
 
 Claude's teammate preview moves to Alt+O. Ctrl+Shift+Minus stays herdr split; Claude undo retains Ctrl+Underscore. Shift+Up/Down stay workspace navigation; Claude's other message-selector top/bottom shortcuts remain. Specialized team/task/mode controls retain native semantics.
 
 Both agents use Herdr's themed per-pane footer: directory, branch, access badge,
 model and effort, context used, and reported usage limits. Codex keeps its native
-Catppuccin syntax theme; its duplicate native statusline is disabled. Claude's
-status callback feeds the collector without printing another line. Startup quota
-data for Codex comes from read-only app-server requests before its first prompt.
+Catppuccin syntax theme, keypress hints, and native context indicator. Codex
+uses rollout metadata for its footer, so idle permission and context changes
+may wait for another logged turn. Claude's status callback feeds the collector
+without printing another line. Independent pane collectors check for changes
+every 250 ms; normal permission badges are yellow and bypass is red.
 
 Fork shortcuts also work while only the herdr package is Stowed: they resolve the shared helper from this checkout. Older Claude processes can use their exact PID/session registration. Codex processes started before the herdr integration was installed need to be resumed in a new CLI process to register their session identity; the fork command never guesses with `--last`.
 

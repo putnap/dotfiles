@@ -1,6 +1,5 @@
 # Keep production and previews on the same reviewed patch set.
 { pkgs, check ? true }:
-assert pkgs.herdr.version == "0.9.0";
 pkgs.herdr.overrideAttrs (old: {
   patches = (old.patches or []) ++ [
     ./patches/herdr-pane-footer.patch
@@ -9,9 +8,14 @@ pkgs.herdr.overrideAttrs (old: {
   ];
 } // pkgs.lib.optionalAttrs check {
   doCheck = true;
+  nativeCheckInputs = (old.nativeCheckInputs or []) ++ [ pkgs.cargo-nextest ];
   checkPhase = ''
-    cargo test --offline --release --bin herdr pane_footer
-    cargo test --offline --release --bin herdr popup_title
-    cargo test --offline --release --bin herdr launch_flags
+    runHook preCheck
+    for suite in pane_footer popup_title launch_flags; do
+      cargo nextest run --offline --release \
+        --target ${pkgs.stdenv.hostPlatform.rust.rustcTarget} \
+        --bin herdr -E "test($suite)" --no-tests=fail
+    done
+    runHook postCheck
   '';
 })
