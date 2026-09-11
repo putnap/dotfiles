@@ -112,6 +112,21 @@
             '';
           };
 
+        launchd.user.agents.codex-remote = {
+          command = "${config.system.path}/bin/codex app-server --remote-control --listen unix://";
+          environment = {
+            HOME = "/Users/${user}";
+            CODEX_HOME = "/Users/${user}/.codex";
+            PATH = "${config.system.path}/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin";
+          };
+          serviceConfig = {
+            RunAtLoad = true;
+            KeepAlive = true;
+            StandardOutPath = "/Users/${user}/Library/Logs/codex-remote.log";
+            StandardErrorPath = "/Users/${user}/Library/Logs/codex-remote.error.log";
+          };
+        };
+
         fonts.packages = with pkgs;
           [
             nerd-fonts.jetbrains-mono
