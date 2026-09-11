@@ -2,11 +2,13 @@
 # Stock Herdr ignores this file. Reload with prefix+r after editing.
 enabled = true
 
-# Available fields: access, mode, directory, branch, model, effort, context, five_hour, weekly.
+# Available fields: access, mode, directory, branch, model, effort, context, tokens,
+# five_hour, weekly, credits. "tokens" is what this Codex session spent, excluding
+# cached reads. "credits" appears only once a usage window is exhausted.
 # "mode" is Codex's collaboration mode and is shown only when it is not the default one.
 # Remove a field to hide it; reorder or move it between sides. Missing data is omitted.
 left = ["access", "mode", "directory", "branch"]
-right = [["model", " ", "effort"], "context", "five_hour", "weekly"]
+right = [["model", " ", "effort"], "context", "tokens", "five_hour", "weekly", "credits"]
 # Outer items use this separator. Inner arrays concatenate tokens and literal text.
 # Tokens retain their own colors; groups without available token data are omitted.
 separator = " · "
@@ -14,6 +16,7 @@ separator = " · "
 context_label = "ctx"
 five_hour_label = "5h"
 weekly_label = "week"
+tokens_label = "spent"
 # Strictly above these percentages; 80% remains green and 95% remains amber.
 warning_percent = 80
 critical_percent = 95
@@ -28,6 +31,8 @@ branch_color = "blue"
 model_color = "mauve"
 effort_color = "mauve"
 usage_color = "green"
+tokens_color = "subtext0"
+credits_color = "peach" # Exhausted with no credits uses critical_color.
 warning_color = "yellow"
 critical_color = "red"
 separator_color = "text"

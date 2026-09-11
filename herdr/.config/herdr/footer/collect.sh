@@ -26,7 +26,7 @@ logging.basicConfig(format="%(asctime)s %(levelname)s %(message)s")
 INTERVAL = 0.25
 BACKOFF_LIMIT = 5.0
 QUOTA_INTERVAL = 120.0
-QUOTA_FIELDS = ("five_hour", "weekly", "five_hour_resets_at", "weekly_resets_at")
+QUOTA_FIELDS = ("five_hour", "weekly", "five_hour_resets_at", "weekly_resets_at", "has_credits")
 MODE_RECORD = re.compile(rb'^\{.*"permissionMode".*$', re.M)
 
 
@@ -129,6 +129,14 @@ def share_quota(provider, sample):
         if usable and (known is None or measured >= known["measured_at"]):
             quotas[provider] = dict(reading, measured_at=measured)
         return dict(quotas.get(provider) or {})
+
+
+def compact(value):
+    # A raw token count is unreadable at a glance and not worth the width.
+    for limit, suffix in ((1_000_000_000, "B"), (1_000_000, "M"), (1_000, "k")):
+        if value >= limit:
+            return f"{value / limit:.1f}{suffix}".replace(".0", "")
+    return str(int(value))
 
 
 def quota_value(quota, key):
@@ -308,7 +316,14 @@ class Pane:
                   "footer_dir": self.git_values[0], "footer_branch": self.git_values[1] or None,
                   "footer_model": " ".join(v for v in (model, effort) if isinstance(v, str)),
                   "footer_model_name": model, "footer_effort": effort}
+        spent = sample.get("session_tokens")
+        tokens["footer_tokens"] = compact(spent) if isinstance(spent, (int, float)) and spent >= 0 else None
         quota = share_quota(provider, sample)
+        # Past the limit the account runs on credits, which is worth saying out loud.
+        exhausted = any(isinstance(quota_value(quota, key), (int, float))
+                        and quota_value(quota, key) >= 100 for key in ("five_hour", "weekly"))
+        tokens["footer_credits"] = None if not exhausted else (
+            "credits" if quota.get("has_credits") else "limit")
         for key, token in (("context", "footer_ctx"), ("five_hour", "footer_5h"), ("weekly", "footer_week")):
             value = sample.get(key) if key == "context" else quota_value(quota, key)
             tokens[token] = str(value) if isinstance(value, (int, float)) else None

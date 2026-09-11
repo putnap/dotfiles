@@ -36,6 +36,20 @@ updates, and attached terminal rendering at narrow and wide sizes. Broader mouse
 and 15-pane performance verification remains before production rollout. Native
 Claude and Codex permission flags were verified across repeated server restores.
 
+Codex reports no credit balance. Its `credits` object carries `balance: null` in
+every one of the 6,888 occurrences across the local rollout logs and from the
+live account endpoint too, and credits are an account fact rather than a session
+one, so there is no per-session figure to show. What the footer shows instead is
+`credits` once a usage window reaches 100 per cent, or `limit` when it is
+exhausted with no credits left, which takes `critical_color`.
+
+Session spend is a separate field, and it deliberately does not report the raw
+total. One live session recorded 213.9M total tokens, of which 210.2M were
+cached input reads; billing that to the session would overstate it by two orders
+of magnitude. The `tokens` field reports uncached input plus output instead, 3.8M
+for that session, abbreviated so it costs little width. It comes from the rollout
+log, so it is Codex-only.
+
 The five-hour and weekly figures measure the account, not the session, so the
 newest reading any session observed is what every pane of that provider shows.
 Without this an idle pane reported its own last observation, which drifted by

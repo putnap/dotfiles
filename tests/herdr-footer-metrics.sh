@@ -2,8 +2,10 @@
 set -euo pipefail
 repo=$(cd "$(dirname "$0")/.." && pwd -P)
 scripts=$repo/herdr/.config/herdr/footer
-sample='{"info":{"model_context_window":258400,"last_token_usage":{"total_tokens":15634}},"rate_limits":{"primary":{"window_minutes":10080,"used_percent":22}}}'
+sample='{"info":{"model_context_window":258400,"last_token_usage":{"total_tokens":15634},"total_token_usage":{"input_tokens":213382253,"cached_input_tokens":210169600,"output_tokens":552896}},"rate_limits":{"primary":{"window_minutes":10080,"used_percent":22},"credits":{"has_credits":true}}}'
 jq -c -f "$scripts/codex-metrics.jq" <<< "$sample" | jq -e '.context == 1 and .five_hour == null and .weekly == 22' >/dev/null
+jq -c -f "$scripts/codex-metrics.jq" <<< "$sample" | jq -e '.session_tokens == 3765549 and .has_credits == true' >/dev/null
+jq -c -f "$scripts/codex-metrics.jq" <<< '{}' | jq -e '.session_tokens == null and .has_credits == null' >/dev/null
 jq -c -f "$scripts/codex-metrics.jq" <<< '{}' | jq -e '.context == null and .five_hour == null and .weekly == null' >/dev/null
 printf '%s\n' '{"type":"turn_context","payload":{"model":"test","effort":"high","approval_policy":"never","sandbox_policy":{"type":"danger-full-access"}}}' '{"type":"response_item","payload":{"text":"must not remain"}}' 'invalid' |
   jq -Rnc --argjson previous '[{}]' -f "$scripts/collect.jq" |
@@ -146,6 +148,14 @@ done
     assert retained.exists(), "a lock another collector still holds was removed"
     assert first["footer_ctx"] == "32" and first["footer_access"] == "[workspace]", first
     # Codex's plan mode sits beside the permission badge rather than replacing it.
+    spending = collect(dict(sample, session_tokens=3765549, weekly=100, has_credits=True,
+                            measured_at=time.time(), weekly_resets_at=later))
+    assert spending["footer_tokens"] == "3.8M" and spending["footer_week"] == "100", spending
+    assert spending["footer_credits"] == "credits", spending
+    blocked = collect(dict(sample, session_tokens=947, weekly=100, has_credits=False,
+                           measured_at=time.time(), weekly_resets_at=later))
+    assert blocked["footer_tokens"] == "947" and blocked["footer_credits"] == "limit", blocked
+    assert first["footer_credits"] is None, "an unexhausted window must say nothing"
     planning = collect(dict(sample, mode="plan"))
     assert planning["footer_mode"] == "[plan]" and planning["footer_access"] == "[workspace]", planning
     assert published["w1:p2"]["footer_ctx"] == "41"
@@ -232,5 +242,5 @@ done
         collector.wait(timeout=5)
     server.shutdown()
     server.server_close()
-print("Collector integration passed: independent panes, idle permission updates, fresh session context,\n unknown values cleared, single instance per socket, abandoned locks swept,\n Codex collaboration mode beside the permission badge,\n account usage shared across panes and refreshed for Codex,\n recovery from an unusable snapshot.")
+print("Collector integration passed: independent panes, idle permission updates, fresh session context,\n unknown values cleared, single instance per socket, abandoned locks swept,\n Codex collaboration mode beside the permission badge,\n session spend and credit state,\n account usage shared across panes and refreshed for Codex,\n recovery from an unusable snapshot.")
 PY

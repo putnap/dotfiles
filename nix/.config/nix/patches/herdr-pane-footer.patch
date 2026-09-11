@@ -120,7 +120,7 @@
              hide_tab_bar_when_single_tab: false,
 --- a/src/config/pane_footer.rs
 +++ b/src/config/pane_footer.rs
-@@ -0,0 +1,266 @@
+@@ -0,0 +1,276 @@
 +use super::sidebar::SidebarTokenColor;
 +use serde::{Deserialize, Serialize};
 +use std::collections::HashMap;
@@ -135,8 +135,10 @@
 +    Model,
 +    Effort,
 +    Context,
++    Tokens,
 +    FiveHour,
 +    Weekly,
++    Credits,
 +}
 +
 +#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -266,6 +268,7 @@
 +    pub context_label: String,
 +    pub five_hour_label: String,
 +    pub weekly_label: String,
++    pub tokens_label: String,
 +    pub access_color: FooterColor,
 +    pub access_colors: HashMap<String, FooterColor>,
 +    pub mode_color: FooterColor,
@@ -274,6 +277,8 @@
 +    pub model_color: FooterColor,
 +    pub effort_color: FooterColor,
 +    pub usage_color: FooterColor,
++    pub tokens_color: FooterColor,
++    pub credits_color: FooterColor,
 +    pub warning_color: FooterColor,
 +    pub critical_color: FooterColor,
 +    pub separator_color: FooterColor,
@@ -293,8 +298,10 @@
 +                    FooterAtom::Token(Effort),
 +                ]),
 +                Context.into(),
++                Tokens.into(),
 +                FiveHour.into(),
 +                Weekly.into(),
++                Credits.into(),
 +            ],
 +            separator: " · ".into(),
 +            warning_percent: 80,
@@ -302,6 +309,7 @@
 +            context_label: "ctx".into(),
 +            five_hour_label: "5h".into(),
 +            weekly_label: "week".into(),
++            tokens_label: "spent".into(),
 +            access_color: FooterColor::Palette(P::Yellow),
 +            // Each badge takes the colour its agent already shows for that mode.
 +            access_colors: [
@@ -323,6 +331,8 @@
 +            model_color: FooterColor::Palette(P::Mauve),
 +            effort_color: FooterColor::Palette(P::Mauve),
 +            usage_color: FooterColor::Palette(P::Green),
++            tokens_color: FooterColor::Palette(P::Subtext0),
++            credits_color: FooterColor::Palette(P::Peach),
 +            warning_color: FooterColor::Palette(P::Yellow),
 +            critical_color: FooterColor::Palette(P::Red),
 +            separator_color: FooterColor::Palette(P::Text),
@@ -507,7 +517,7 @@
  pub(crate) fn popup_pane_rects(app: &AppState, area: Rect) -> Option<(Rect, Rect)> {
 --- a/src/ui/pane_footer.rs
 +++ b/src/ui/pane_footer.rs
-@@ -0,0 +1,392 @@
+@@ -0,0 +1,409 @@
 +//! A presentation row outside the PTY viewport; values come from pane metadata.
 +use super::text::{display_width, truncate_end};
 +use crate::{
@@ -724,6 +734,23 @@
 +        let (text, color) = match field {
 +            FooterField::Access => return access(value("footer_access"), cfg, &app.palette),
 +            FooterField::Mode => (value("footer_mode")?, cfg.mode_color),
++            FooterField::Tokens => {
++                let spent = value("footer_tokens")?;
++                return Some((
++                    format!("{} {spent}", cfg.tokens_label),
++                    cfg.tokens_color.resolve(&app.palette),
++                ));
++            }
++            FooterField::Credits => {
++                let state = value("footer_credits")?;
++                // No credits left behind an exhausted limit is worse than spending them.
++                let color = if state == "limit" {
++                    cfg.critical_color
++                } else {
++                    cfg.credits_color
++                };
++                return Some((state.to_owned(), color.resolve(&app.palette)));
++            }
 +            FooterField::Directory => {
 +                (value("footer_dir").unwrap_or(fallback), cfg.directory_color)
 +            }

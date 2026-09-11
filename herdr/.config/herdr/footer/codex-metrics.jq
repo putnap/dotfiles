@@ -4,8 +4,13 @@ def context_used:
   if ($window | type) != "number" or ($used | type) != "number" then null
   elif $window <= 12000 then 100
   else 100 - ((([($window - 12000 - ([$used - 12000, 0] | max)), 0] | max) / ($window - 12000) * 100) | round | [., 0] | max | [.,100] | min) end;
+def session_tokens:
+  .info.total_token_usage as $u |
+  if ($u.input_tokens | type) != "number" then null
+  else ($u.input_tokens - ($u.cached_input_tokens // 0) + ($u.output_tokens // 0)) end;
 def window($minutes):
   [.rate_limits.primary, .rate_limits.secondary] | map(select(.window_minutes == $minutes)) | .[0];
 {model, effort, cwd, mode, measured_at, approval, sandbox, context:context_used,
+ session_tokens:session_tokens, has_credits:.rate_limits.credits.has_credits,
  five_hour:window(300).used_percent, weekly:window(10080).used_percent,
  five_hour_resets_at:window(300).resets_at, weekly_resets_at:window(10080).resets_at}

@@ -32,6 +32,7 @@ done
 [[ -f $tmp/config && -f $tmp/limits ]] || exit 1
 jq -s '.[0] * .[1] | .rate_limits as $r |
  def window($mins): [$r.primary,$r.secondary] | map(select(.windowDurationMins == $mins)) | .[0];
- . + {measured_at:now, five_hour:window(300).usedPercent, weekly:window(10080).usedPercent,
+ . + {measured_at:now, has_credits:$r.credits.hasCredits,
+ five_hour:window(300).usedPercent, weekly:window(10080).usedPercent,
  five_hour_resets_at:window(300).resetsAt, weekly_resets_at:window(10080).resetsAt} | del(.rate_limits)' "$tmp/config" "$tmp/limits" > "$tmp/sample"
 mv "$tmp/sample" "$dir/start-data.json"
