@@ -298,7 +298,7 @@
 +            context_label: "ctx".into(),
 +            five_hour_label: "5h".into(),
 +            weekly_label: "week".into(),
-+            access_color: FooterColor::Palette(P::Red),
++            access_color: FooterColor::Palette(P::Yellow),
 +            directory_color: FooterColor::Palette(P::Green),
 +            branch_color: FooterColor::Palette(P::Blue),
 +            model_color: FooterColor::Palette(P::Mauve),
@@ -488,7 +488,7 @@
  pub(crate) fn popup_pane_rects(app: &AppState, area: Rect) -> Option<(Rect, Rect)> {
 --- a/src/ui/pane_footer.rs
 +++ b/src/ui/pane_footer.rs
-@@ -0,0 +1,351 @@
+@@ -0,0 +1,380 @@
 +//! A presentation row outside the PTY viewport; values come from pane metadata.
 +use super::text::{display_width, truncate_end};
 +use crate::{
@@ -530,6 +530,19 @@
 +pub(crate) fn content_rect(app: &AppState, ws: usize, pane: PaneId, area: Rect) -> Rect {
 +    let enabled = app.pane_footer.enabled && terminal(app, ws, pane).is_some_and(eligible);
 +    reserve(area, enabled).0
++}
++fn access(
++    value: Option<&str>,
++    cfg: &PaneFooterConfig,
++    palette: &Palette,
++) -> Option<(String, Color)> {
++    let value = value?;
++    let color = if value == "[bypass]" {
++        cfg.critical_color
++    } else {
++        cfg.access_color
++    };
++    Some((value.to_owned(), color.resolve(palette)))
 +}
 +fn metric(
 +    label: &str,
@@ -690,7 +703,7 @@
 +        .unwrap_or("/");
 +    let part = |field: FooterField| -> Option<(String, Color)> {
 +        let (text, color) = match field {
-+            FooterField::Access => (value("footer_access")?, cfg.access_color),
++            FooterField::Access => return access(value("footer_access"), cfg, &app.palette),
 +            FooterField::Directory => {
 +                (value("footer_dir").unwrap_or(fallback), cfg.directory_color)
 +            }
@@ -821,6 +834,22 @@
 +            text(&group.spans),
 +            "astra ",
 +            "literal spacing is preserved, not reinterpreted as a separator"
++        );
++    }
++    #[test]
++    fn pane_footer_permissions_distinguish_bypass() {
++        let palette = AppState::test_new().palette;
++        let cfg = PaneFooterConfig::default();
++        assert_eq!(access(None, &cfg, &palette), None);
++        for label in ["[workspace]", "[read only]", "[auto]", "[full access]"] {
++            assert_eq!(
++                access(Some(label), &cfg, &palette),
++                Some((label.into(), palette.yellow))
++            );
++        }
++        assert_eq!(
++            access(Some("[bypass]"), &cfg, &palette),
++            Some(("[bypass]".into(), palette.red))
 +        );
 +    }
 +    #[test]

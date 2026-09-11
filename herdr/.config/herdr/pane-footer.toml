@@ -20,7 +20,7 @@ critical_percent = 95
 # Theme palette names or literal #RGB / #RRGGBB colors.
 # Palette names follow the active theme: red, green, yellow, blue, mauve,
 # teal, peach, text, subtext0, surface0.
-access_color = "red"
+access_color = "yellow" # Bypass uses critical_color.
 directory_color = "green"
 branch_color = "blue"
 model_color = "mauve"
