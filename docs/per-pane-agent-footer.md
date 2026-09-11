@@ -37,30 +37,43 @@ and 15-pane performance verification remains before production rollout. Native
 Claude and Codex permission flags were verified across repeated server restores.
 
 Quota readings are the last observation, not a continuously queried account
-endpoint. Before Codex reports a session ID, the collector reads effective launch
-configuration and account limits through read-only app-server requests. No thread
-or prompt is created. Startup data is scoped to terminal and process identity,
-and queried once per process. Unknown context usage stays hidden. Once a session
-ID is available, exact-session telemetry takes over. Claude updates its callback;
-Codex reads appended
-session-log records using its reported ID and matches the 0.153.4 context formula.
-The collector refreshes metadata every three seconds with a 15-second liveness
-TTL. Its private cache retains metadata and potentially an incomplete log line;
-temporary raw chunks are deleted after parsing. Codex's internal log format is
-version-sensitive. Presentation is configured in the separate
-`herdr/.config/herdr/pane-footer.toml`: field
-order and side, colors, labels, separator, enablement, and percentage thresholds.
+endpoint. Codex uses the unmodified Nixpkgs package and the rollout fallback.
+Idle permission and context changes may wait for another logged turn. The
+collector still accepts live metadata from existing patched processes after
+checking process identity, socket, and file age.
 
-Access badges precede the worktree: `[bypass]`, `[full access]`, `[auto edits]`,
-`[auto]`, or `[plan]` where applicable. They represent the last reported mode,
-not a live authorization guarantee. Claude's status callback does not expose
-mode, so the collector reads the most recent top-level `permissionMode` from
-its transcript. A keyboard switch may only appear on the next prompt; retain
-the native mode indicator for immediate feedback. Codex reports sandbox and
-approval policy in each turn context. Full access with approvals is distinguished
-from full access with approval policy `never` (`[bypass]`). Claude transcript
-mode extraction currently scans the transcript on callback, another scaling
-item to address before production adoption.
+Each pane has an independent collector worker that checks for changes every
+250 ms. Socket requests and JSON reads stay in the collector process; Git results
+are cached for five seconds. Changed values publish immediately, while unchanged
+values renew their 15-second metadata lease every five seconds. A slow startup
+quota query cannot delay another pane. Unknown values clear the corresponding
+field. Rollout fallback retains only parsed metadata and an incomplete line in
+memory, and resets when the session or log file changes.
+
+No sampling failure ends the collector. A worker and the supervisor log the
+error and retry, doubling the interval to a five-second ceiling until the pane
+recovers, so a departing server cannot drive a logging loop. Server refusals are
+logged without a traceback because a closing pane produces them routinely, and a
+terminal listed before its agent is identified is skipped rather than treated as
+malformed. Workers for departed terminals are dropped, and `SIGTERM` stops the
+collector without killing an in-flight publication. Startup also sweeps lock
+files from retired socket generations that no collector still holds.
+
+Presentation is configured in `herdr/.config/herdr/pane-footer.toml`: field order
+and side, colors, labels, separator, enablement, and percentage thresholds.
+Context percentages represent **used** context; a fresh session shows `ctx 0%`.
+Permission badges use `access_color` (yellow); `[bypass]` uses `critical_color`
+(red). Full access with approvals remains distinct from bypass. Claude's native
+status callback still supplies its metrics and reads the latest transcript
+`permissionMode`; the collector does not invent permissions when none are known.
+
+Codex retains its native input colors, context indicator, and keypress hints.
+The local Codex source patch was removed because rebuilding on frequent upgrades
+made system updates too slow.
+
+Herdr's patched release passed all 11 package checks and the isolated integration
+suite. Collector and startup fixtures passed. Earlier patched-Codex validation
+no longer describes the installed package.
 
 ## Decision
 

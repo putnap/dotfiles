@@ -1,125 +1,299 @@
 #!/usr/bin/env bash
-# One collector for the isolated server. Retain metadata and an incomplete log line.
 set -euo pipefail
 scripts=$(cd "$(dirname "$0")" && pwd -P)
 source "$scripts/state-dir.sh"
-herdr=${HERDR_BIN_PATH:-herdr}
-mkdir -p "$root/codex"
-chmod 700 "$root" "$root/codex"
-socket_generation=$(stat -f '%i:%B' "${HERDR_SOCKET_PATH:?}")
-# A departing server's collector must not block the next server's startup.
-lock=$root/collector-$socket_generation.lock
-/usr/bin/shlock -p "$$" -f "$lock" || { echo 'footer collector already running' >&2; exit 1; }
-trap 'rm -f "$lock"' EXIT
-umask 077
-codex_sample() {
-  local id=$1 dir log offset size generation
-  dir=$root/codex/$id
-  mkdir -p "$dir"
-  if [[ ! -s $dir/path ]]; then
-    [[ -d ${CODEX_HOME:-$HOME/.codex}/sessions ]] || return 1
-    rg --files --hidden "${CODEX_HOME:-$HOME/.codex}/sessions" | awk -v suffix="-$id.jsonl" 'length($0) >= length(suffix) && substr($0,length($0)-length(suffix)+1)==suffix {print; exit}' > "$dir/path"
-  fi
-  log=$(cat "$dir/path")
-  [[ -f $log ]] || return 1
-  size=$(stat -f %z "$log")
-  generation=$(stat -f '%i:%B' "$log")
-  offset=0
-  [[ ! -f $dir/offset ]] || offset=$(cat "$dir/offset")
-  if [[ ! -f $dir/generation || $(cat "$dir/generation") != "$generation" || $size -lt $offset ]]; then
-    offset=0
-    printf '{}' > "$dir/state.json"
-    : > "$dir/pending"
-    printf '%s' "$generation" > "$dir/generation"
-  fi
-  if ((size > offset)); then
-    cat "$dir/pending" > "$dir/buffer"
-    tail -c +$((offset + 1)) "$log" > "$dir/chunk"
-    cat "$dir/chunk" >> "$dir/buffer"
-    offset=$((offset + $(wc -c < "$dir/chunk")))
-    if [[ $(tail -c 1 "$dir/buffer" | od -An -tu1 | tr -d ' ') == 10 ]]; then
-      cp "$dir/buffer" "$dir/complete"
-      : > "$dir/pending"
-    else
-      sed '$d' "$dir/buffer" > "$dir/complete"
-      tail -n 1 "$dir/buffer" > "$dir/pending"
-    fi
-    jq -Rnc --slurpfile previous "$dir/state.json" -f "$scripts/collect.jq" < "$dir/complete" > "$dir/next"
-    mv "$dir/next" "$dir/state.json"
-    printf '%s' "$offset" > "$dir/offset"
-    rm -f "$dir/chunk" "$dir/buffer" "$dir/complete"
-  fi
-  jq -c -f "$scripts/codex-metrics.jq" "$dir/state.json"
-}
-publish() {
-  local agent=$1 provider id pane terminal sample cwd branch worktree access model model_name effort current args key value initial=false process pid dir flag config_args
-  provider=$(jq -r '.agent' <<< "$agent")
-  id=$(jq -r '.agent_session | select(.kind == "id") | .value | select(test("^[a-zA-Z0-9_-]+$"))' <<< "$agent")
-  pane=$(jq -r '.pane_id' <<< "$agent")
-  terminal=$(jq -r '.terminal_id' <<< "$agent")
-  cwd=$(jq -r '.foreground_cwd // .cwd' <<< "$agent")
-  if [[ -z $id && $provider == codex ]]; then
-    initial=true
-    process=$("$herdr" pane process-info --pane "$pane" | jq -ce '.result.process_info.foreground_processes[] | select((.argv[0] | split("/") | last) == "codex")') || return 0
-    pid=$(jq -r '.pid' <<< "$process")
-    dir=$root/codex/start-$terminal-$pid
-    mkdir -p "$dir"
-    if [[ ! -f $dir/start-data.json ]]; then
-      # Preserve explicit config/model/permission overrides in the read-only query.
-      config_args=()
-      while IFS= read -r flag; do config_args+=("$flag"); done < <(jq -r '
-        .argv as $a | range(1; $a|length) as $i |
-        if ($a[$i] == "-c" or $a[$i] == "--config") then "-c", $a[$i+1]
-        elif ($a[$i] == "-m" or $a[$i] == "--model") then "-c", ("model=" + ($a[$i+1]|tojson))
-        elif ($a[$i] == "-s" or $a[$i] == "--sandbox") then "-c", ("sandbox_mode=" + ($a[$i+1]|tojson))
-        elif ($a[$i] == "-a" or $a[$i] == "--ask-for-approval") then "-c", ("approval_policy=" + ($a[$i+1]|tojson))
-        elif ($a[$i] == "--dangerously-bypass-approvals-and-sandbox" or $a[$i] == "--yolo") then "-c", "sandbox_mode=\"danger-full-access\"", "-c", "approval_policy=\"never\""
-        else empty end' <<< "$process")
-      (cd "$cwd" && bash "$scripts/codex-start-data.sh" "$dir" "${config_args[@]}") || return 0
-    fi
-    sample=$(cat "$dir/start-data.json")
-  else
-    [[ -n $id ]] || return 0
-    case "$provider" in
-      claude) [[ -f $root/claude/$id.json ]] || return 0; sample=$(cat "$root/claude/$id.json");;
-      codex) sample=$(codex_sample "$id") || return 0;;
-      *) return 0;;
-    esac
-  fi
-  worktree=$(git -C "$cwd" rev-parse --show-toplevel 2>/dev/null) || worktree=$cwd
-  worktree=${worktree##*/}
-  branch=$(git -C "$cwd" symbolic-ref --short HEAD 2>/dev/null) || branch=$(git -C "$cwd" rev-parse --short HEAD 2>/dev/null) || branch=
-  access=$(jq -nr --argjson data "$sample" \
-    '(if $data.permission == "bypassPermissions" or ($data.sandbox == "danger-full-access" and $data.approval == "never") then "[bypass]"
-      elif $data.sandbox == "danger-full-access" then "[full access]"
-      elif $data.permission == "acceptEdits" then "[auto edits]"
-      elif $data.permission == "auto" then "[auto]"
-      elif $data.permission == "plan" then "[plan]"
-      else "" end)')
-  model=$(jq -r '[.model, .effort] | map(select(type == "string" and length > 0)) | join(" ") | .[0:80]' <<< "$sample")
-  model_name=$(jq -r '.model | if type == "string" then .[0:80] else "" end' <<< "$sample")
-  effort=$(jq -r '.effort | if type == "string" then .[0:80] else "" end' <<< "$sample")
-  # Resolve moves again and reject stale/replaced sessions immediately before publishing.
-  current=$("$herdr" agent list | jq -ce --arg terminal "$terminal" --arg id "$id" --arg provider "$provider" \
-    '.result.agents[] | select(.terminal_id == $terminal and .agent == $provider and (.agent_session.value // "") == $id)') || return 0
-  pane=$(jq -r '.pane_id' <<< "$current")
-  args=(pane report-metadata "$pane" --source user:pane-footer --ttl-ms 15000 --token "footer_session=$id" --clear-token footer_left --token "footer_access=$access" --token "footer_dir=${worktree:0:80}" --token "footer_branch=${branch:0:80}" --token "footer_model=$model" --token "footer_model_name=$model_name" --token "footer_effort=$effort")
-  if $initial; then
-    # Recheck process identity after the asynchronous network request.
-    "$herdr" pane process-info --pane "$pane" | jq -e --argjson pid "$pid" '.result.process_info.foreground_processes | any(.pid == $pid)' >/dev/null || return 0
-    args+=(--token "footer_terminal=$terminal")
-  else args+=(--clear-token footer_terminal); fi
-  for key in context five_hour weekly; do
-    case "$key" in context) token=footer_ctx;; five_hour) token=footer_5h;; weekly) token=footer_week;; esac
-    value=$(jq -r --arg key "$key" '.[$key] | select(type == "number")' <<< "$sample")
-    if [[ -n $value ]]; then args+=(--token "$token=$value"); else args+=(--clear-token "$token"); fi
-  done
-  "$herdr" "${args[@]}"
-}
-while [[ -S $HERDR_SOCKET_PATH && $(stat -f '%i:%B' "$HERDR_SOCKET_PATH") == "$socket_generation" ]]; do
-  if agents=$("$herdr" agent list); then
-    while IFS= read -r agent; do publish "$agent" || echo 'footer sample failed; retrying' >&2; done < <(jq -c '.result.agents[] | select(.agent == "claude" or .agent == "codex")' <<< "$agents")
-  fi
-  [[ ${1:-} != --once ]] || break
-  sleep 3
-done
+exec python3 - "$scripts" "$root" "$@" <<'PY'
+import fcntl
+import json
+import logging
+import os
+from pathlib import Path
+import re
+import signal
+import socket
+import subprocess
+import sys
+import threading
+import time
+
+scripts, root = map(Path, sys.argv[1:3])
+socket_path = os.environ["HERDR_SOCKET_PATH"]
+codex_home = Path(os.environ.get("CODEX_HOME", str(Path.home() / ".codex")))
+root.mkdir(parents=True, exist_ok=True, mode=0o700)
+os.umask(0o077)
+logging.basicConfig(format="%(asctime)s %(levelname)s %(message)s")
+INTERVAL = 0.25
+BACKOFF_LIMIT = 5.0
+
+
+def socket_generation():
+    # An inode alone can be reused, letting a departing collector hold the next server's lock.
+    info = os.stat(socket_path)
+    return f"{info.st_ino}-{int(info.st_birthtime)}"
+
+
+generation = socket_generation()
+lock_path = root / f"collector-{generation}.lock"
+lock = lock_path.open("a+")
+try:
+    fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+except BlockingIOError:
+    sys.exit("footer collector already running")
+lock.seek(0)
+lock.truncate()
+lock.write(str(os.getpid()))
+lock.flush()
+for stale in root.glob("collector-*.lock"):
+    # A retired generation can never gain a collector, so an unheld lock is only litter.
+    if stale != lock_path:
+        try:
+            with stale.open("a+") as holder:
+                fcntl.flock(holder, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                stale.unlink()
+        except (BlockingIOError, FileNotFoundError):
+            pass
+stop = threading.Event()
+agents = {}
+workers = {}
+state_lock = threading.Lock()
+once = "--once" in sys.argv[3:]
+
+
+class RpcError(RuntimeError):
+    """The server refused a request, which is expected whenever a pane or agent disappears."""
+
+
+def interval(failures):
+    # A departing server or a wedged pane must not keep sampling at the full rate.
+    return min(INTERVAL * 2 ** failures, BACKOFF_LIMIT)
+
+
+def report(event, **context):
+    error = sys.exc_info()[1]
+    fields = " ".join(f"{key}={value}" for key, value in context.items())
+    # A refusal is ordinary pane churn; a traceback belongs to a real bug.
+    if isinstance(error, RpcError):
+        logging.warning("%s %s error=%r", event, fields, str(error))
+    else:
+        logging.exception("%s %s", event, fields)
+
+
+def rpc(method, params=None):
+    with socket.socket(socket.AF_UNIX) as connection:
+        connection.settimeout(2)
+        connection.connect(socket_path)
+        request = {"id": "footer", "method": method, "params": params or {}}
+        connection.sendall(json.dumps(request).encode() + b"\n")
+        with connection.makefile("rb") as response:
+            value = json.loads(response.readline())
+        if "error" in value:
+            raise RpcError(value["error"])
+        return value["result"]
+
+
+def read_json(path):
+    try:
+        return json.loads(path.read_text())
+    except FileNotFoundError:
+        return None
+
+
+def identity(agent):
+    return agent["agent"], (agent.get("agent_session") or {}).get("value", "")
+
+
+def command(*args, cwd=None, input=None):
+    return subprocess.check_output(args, cwd=cwd, input=input, text=True, stderr=subprocess.DEVNULL)
+
+
+class Pane:
+    def __init__(self):
+        self.process = None
+        self.process_checked = 0
+        self.process_started = 0
+        self.log_id = None
+        self.log = None
+        self.offset = 0
+        self.log_generation = None
+        self.pending = b""
+        self.log_state = {}
+        self.sample = {}
+        self.git_key = None
+        self.git_checked = 0
+        self.git_values = ("", "")
+        self.published = None
+        self.published_at = 0
+
+    def codex(self, agent, session_id, cwd):
+        now = time.monotonic()
+        if now - self.process_checked >= 1:
+            info = rpc("pane.process_info", {"pane_id": agent["pane_id"]})["process_info"]
+            process = next((p for p in info["foreground_processes"]
+                            if Path(p["argv"][0]).name in ("codex", ".codex-wrapped")), None)
+            if process != self.process:
+                started = 0
+                if process:
+                    stamp = command("env", "LC_ALL=C", "ps", "-p", str(process["pid"]), "-o", "lstart=").strip()
+                    started = time.mktime(time.strptime(stamp, "%a %b %d %H:%M:%S %Y"))
+                self.process, self.process_started = process, started
+            self.process_checked = now
+        if self.process:
+            native_path = codex_home / "herdr" / f'{self.process["pid"]}.json'
+            native = read_json(native_path)
+            if (native and native.get("socket") == socket_path
+                    and native.get("pid") == self.process["pid"]
+                    and native_path.stat().st_mtime >= self.process_started):
+                sample = dict(native)
+                sample["sandbox"] = (sample.get("sandbox") or {}).get("type")
+                return sample
+        if session_id:
+            if session_id != self.log_id:
+                self.log_id, self.log, self.offset = session_id, None, 0
+                self.pending, self.log_state, self.sample = b"", {}, {}
+            if self.log is None:
+                self.log = next((codex_home / "sessions").rglob(f"*-{session_id}.jsonl"), None)
+            if self.log is None:
+                return {}
+            stat = self.log.stat()
+            generation = (stat.st_ino, stat.st_birthtime)
+            if generation != self.log_generation or stat.st_size < self.offset:
+                self.offset, self.pending, self.log_state, self.sample = 0, b"", {}, {}
+                self.log_generation = generation
+            if stat.st_size != self.offset:
+                with self.log.open("rb") as stream:
+                    stream.seek(self.offset)
+                    data = self.pending + stream.read()
+                    self.offset = stream.tell()
+                complete, _, self.pending = data.rpartition(b"\n")
+                if complete:
+                    self.log_state = json.loads(command(
+                        "jq", "-Rnc", "--argjson", "previous", json.dumps([self.log_state]),
+                        "-f", str(scripts / "collect.jq"), input=complete.decode() + "\n"))
+                    self.sample = json.loads(command("jq", "-c", "-f", str(scripts / "codex-metrics.jq"),
+                                                     input=json.dumps(self.log_state)))
+            return self.sample
+        if not self.process:
+            return {}
+        directory = root / f'start-{agent["terminal_id"]}-{self.process["pid"]}'
+        directory.mkdir(exist_ok=True)
+        sample = read_json(directory / "start-data.json")
+        if sample is None:
+            args = self.process["argv"]
+            overrides = []
+            for i, arg in enumerate(args[:-1]):
+                key = {"-m": "model", "--model": "model", "-s": "sandbox_mode", "--sandbox": "sandbox_mode",
+                       "-a": "approval_policy", "--ask-for-approval": "approval_policy"}.get(arg)
+                if arg in ("-c", "--config"):
+                    overrides.extend(("-c", args[i + 1]))
+                elif key:
+                    overrides.extend(("-c", f"{key}={json.dumps(args[i + 1])}"))
+            if any(arg in args for arg in ("--yolo", "--dangerously-bypass-approvals-and-sandbox")):
+                overrides.extend(("-c", 'sandbox_mode="danger-full-access"', "-c", 'approval_policy="never"'))
+            subprocess.run(["bash", str(scripts / "codex-start-data.sh"), str(directory), *overrides],
+                           cwd=cwd, check=True, stdout=subprocess.DEVNULL)
+            sample = read_json(directory / "start-data.json")
+        return sample
+
+    def publish(self, agent):
+        provider, session_id = identity(agent)
+        if session_id and not re.fullmatch(r"[a-zA-Z0-9_-]+", session_id):
+            return
+        cwd = agent.get("foreground_cwd") or agent["cwd"]
+        sample = (self.codex(agent, session_id, cwd) if provider == "codex"
+                  else read_json(root / "claude" / f"{session_id}.json")) or {}
+        now = time.monotonic()
+        if cwd != self.git_key or now - self.git_checked >= 5:
+            try:
+                worktree = command("git", "-C", cwd, "rev-parse", "--show-toplevel").strip()
+                branch = command("git", "-C", cwd, "rev-parse", "--abbrev-ref", "HEAD").strip()
+                if branch == "HEAD":
+                    branch = command("git", "-C", cwd, "rev-parse", "--short", "HEAD").strip()
+            except subprocess.CalledProcessError:
+                worktree, branch = cwd, ""
+            self.git_key, self.git_checked, self.git_values = cwd, now, (Path(worktree).name, branch)
+        permission, sandbox = sample.get("permission"), sample.get("sandbox")
+        if permission == "bypassPermissions" or (sandbox == "danger-full-access" and sample.get("approval") == "never"):
+            access = "bypass"
+        else:
+            access = sample.get("permission_label", "").lower() or {
+                "acceptEdits": "auto edits", "auto": "auto", "plan": "plan", "default": "ask",
+            }.get(permission) or {
+                "danger-full-access": "full access", "workspace-write": "workspace", "read-only": "read only",
+            }.get(sandbox, "")
+        model, effort = sample.get("model"), sample.get("effort")
+        tokens = {"footer_session": session_id, "footer_terminal": agent["terminal_id"] if not session_id else None,
+                  "footer_left": None, "footer_access": f"[{access}]" if access else None,
+                  "footer_dir": self.git_values[0], "footer_branch": self.git_values[1] or None,
+                  "footer_model": " ".join(v for v in (model, effort) if isinstance(v, str)),
+                  "footer_model_name": model, "footer_effort": effort}
+        for key, token in (("context", "footer_ctx"), ("five_hour", "footer_5h"), ("weekly", "footer_week")):
+            value = sample.get(key)
+            tokens[token] = str(value) if isinstance(value, (int, float)) else None
+        tokens = {k: v[:80] if isinstance(v, str) else v for k, v in tokens.items()}
+        if tokens == self.published and now - self.published_at < 5:
+            return
+        # A late sample cannot repaint a replaced session or a moved pane's old occupant.
+        current = next((a for a in rpc("agent.list")["agents"]
+                        if a["terminal_id"] == agent["terminal_id"] and identity(a) == identity(agent)), None)
+        if current is None:
+            return
+        if provider == "codex" and self.process:
+            info = rpc("pane.process_info", {"pane_id": current["pane_id"]})["process_info"]
+            if not any(p["pid"] == self.process["pid"] for p in info["foreground_processes"]):
+                return
+        rpc("pane.report_metadata", {"pane_id": current["pane_id"], "source": "user:pane-footer",
+                                      "ttl_ms": 15000, "tokens": tokens})
+        self.published, self.published_at = tokens, now
+
+
+def worker(terminal):
+    pane, failures = Pane(), 0
+    while not stop.is_set():
+        with state_lock:
+            agent = agents.get(terminal)
+        if agent is None:
+            return
+        try:
+            pane.publish(agent)
+            failures = 0
+        except Exception:
+            failures += 1
+            report("footer sample failed", terminal=terminal, attempt=failures)
+        if once:
+            return
+        stop.wait(interval(failures))
+
+
+for number in (signal.SIGINT, signal.SIGTERM):
+    signal.signal(number, lambda *_: stop.set())
+failures = 0
+try:
+    while not stop.is_set() and socket_generation() == generation:
+        try:
+            current = rpc("agent.list")["agents"]
+            with state_lock:
+                # Restoring terminals appear in the snapshot before their agent is known.
+                agents = {a["terminal_id"]: a for a in current if a.get("agent") in ("codex", "claude")}
+            for terminal in [t for t in workers if t not in agents and not workers[t].is_alive()]:
+                del workers[terminal]
+            for terminal in agents:
+                if terminal not in workers or not workers[terminal].is_alive():
+                    workers[terminal] = threading.Thread(target=worker, args=(terminal,), daemon=True)
+                    workers[terminal].start()
+            failures = 0
+        except Exception:
+            # One unusable snapshot must not end footer updates for the whole session.
+            if once:
+                raise
+            failures += 1
+            report("footer agent lookup failed", attempt=failures)
+        if once:
+            for thread in workers.values():
+                thread.join()
+            break
+        stop.wait(interval(failures))
+except (FileNotFoundError, ConnectionError):
+    pass
+finally:
+    stop.set()
+PY
