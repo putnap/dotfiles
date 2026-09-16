@@ -42,23 +42,33 @@ claude_permission_mode() {
   jq -r 'select(.permissionMode) | .permissionMode' "$transcript" 2>/dev/null | tail -1
 }
 
-case "$pane_cmd" in
+record=$(tmux show-options -pqv -t "$pane" @workmux_hook)
+identity=$(tmux display-message -p -t "$pane" '#{pane_pid} #{pane_current_command}')
+provider=$(jq -r --arg identity "$identity" 'select(.identity == $identity) | .provider // empty' <<< "${record:-null}")
+session_id=$(jq -r --arg identity "$identity" 'select(.identity == $identity) | .session // empty' <<< "${record:-null}")
+if [[ -z $provider && $pane_cmd == claude ]]; then
+  provider=claude
+  session_id=$(claude_session_id || true)
+fi
+[[ $session_id =~ ^[a-zA-Z0-9_-]+$ ]] || die "no live agent session registered for $pane_ref"
+case "$provider" in
   claude)
-    session_id=$(claude_session_id || true)
-    [ -n "$session_id" ] || die "no live claude session registered for $pane_ref"
-    fork_cmd="claude --resume $session_id --fork-session"
+    command=(claude --resume "$session_id")
+    [[ $target == resume-command ]] || command+=(--fork-session)
     mode=$(claude_permission_mode "$session_id" || true)
-    if [ -n "$mode" ]; then
-      fork_cmd="$fork_cmd --permission-mode $mode"
-    fi
+    [[ -z $mode ]] || command+=(--permission-mode "$mode")
     ;;
-  *)
-    die "no fork support for '$pane_cmd'"
+  codex)
+    if [[ $target == resume-command ]]; then command=(codex resume "$session_id")
+    else command=(codex fork "$session_id"); fi
     ;;
+  *) die "no fork support for '$pane_cmd'";;
 esac
+printf -v fork_cmd '%q ' "${command[@]}"
 
 case "$target" in
-  pane) tmux split-window -h -c "$pane_path" "$fork_cmd" ;;
-  window) tmux new-window -c "$pane_path" "$fork_cmd" ;;
+  resume-command) printf '%s\n' "$fork_cmd";;
+  pane) tmux split-window -t "$pane" -h -c "$pane_path" "$fork_cmd" ;;
+  window) tmux new-window -t "$pane" -c "$pane_path" "$fork_cmd" ;;
   *) die "unknown target '$target' (expected pane or window)" ;;
 esac

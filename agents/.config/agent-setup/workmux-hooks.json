@@ -1,0 +1,133 @@
+{
+  "claude": {
+    "hooks": {
+      "SessionStart": [
+        {
+          "matcher": "startup|resume|clear|fork",
+          "hooks": [
+            {
+              "type": "command",
+              "command": "bash ~/.config/agent-setup/workmux-hook.sh claude register"
+            }
+          ]
+        }
+      ],
+      "UserPromptSubmit": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "bash ~/.config/agent-setup/workmux-hook.sh claude working"
+            }
+          ]
+        }
+      ],
+      "Notification": [
+        {
+          "matcher": "permission_prompt|elicitation_dialog",
+          "hooks": [
+            {
+              "type": "command",
+              "command": "bash ~/.config/agent-setup/workmux-hook.sh claude waiting"
+            }
+          ]
+        }
+      ],
+      "PostToolUse": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "bash ~/.config/agent-setup/workmux-hook.sh claude working"
+            }
+          ]
+        }
+      ],
+      "Stop": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "bash ~/.config/agent-setup/workmux-hook.sh claude done"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "codex": {
+    "hooks": {
+      "SessionStart": [
+        {
+          "matcher": "startup|resume|clear",
+          "hooks": [
+            {
+              "type": "command",
+              "command": "bash ~/.config/agent-setup/workmux-hook.sh codex register"
+            }
+          ]
+        }
+      ],
+      "UserPromptSubmit": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "bash ~/.config/agent-setup/workmux-hook.sh codex working"
+            }
+          ]
+        }
+      ],
+      "PermissionRequest": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "bash ~/.config/agent-setup/workmux-hook.sh codex waiting"
+            }
+          ]
+        }
+      ],
+      "PostToolUse": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "bash ~/.config/agent-setup/workmux-hook.sh codex working"
+            }
+          ]
+        }
+      ],
+      "SubagentStart": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "bash ~/.config/agent-setup/workmux-hook.sh codex working"
+            }
+          ]
+        }
+      ],
+      "SubagentStop": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "bash ~/.config/agent-setup/workmux-hook.sh codex working"
+            }
+          ]
+        }
+      ],
+      "Stop": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "bash ~/.config/agent-setup/workmux-hook.sh codex done"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

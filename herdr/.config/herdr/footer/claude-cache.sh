@@ -2,7 +2,7 @@
 # Used only by the preview Claude statusLine command. No model content is stored.
 set -euo pipefail
 input=$(cat)
-[[ -n ${HERDR_SOCKET_PATH:-} ]] || exit 0
+[[ -n ${HERDR_SOCKET_PATH:-}${TMUX:-} ]] || exit 0
 source "$(dirname "$0")/state-dir.sh"
 mkdir -p "$root/claude"
 chmod 700 "$root/claude"

@@ -16,9 +16,12 @@ import subprocess
 import sys
 import threading
 import time
+import tomllib
+import unicodedata
 
 scripts, root = map(Path, sys.argv[1:3])
-socket_path = os.environ["HERDR_SOCKET_PATH"]
+tmux_backend = "--tmux" in sys.argv[3:]
+socket_path = os.environ["TMUX"].split(",")[0] if tmux_backend else os.environ["HERDR_SOCKET_PATH"]
 codex_home = Path(os.environ.get("CODEX_HOME", str(Path.home() / ".codex")))
 root.mkdir(parents=True, exist_ok=True, mode=0o700)
 os.umask(0o077)
@@ -85,6 +88,8 @@ def report(event, **context):
 
 
 def rpc(method, params=None):
+    if tmux_backend:
+        return tmux_rpc(method, params or {})
     with socket.socket(socket.AF_UNIX) as connection:
         connection.settimeout(2)
         connection.connect(socket_path)
@@ -149,6 +154,107 @@ def quota_value(quota, key):
 
 def command(*args, cwd=None, input=None):
     return subprocess.check_output(args, cwd=cwd, input=input, text=True, stderr=subprocess.DEVNULL)
+
+
+def tmux(*args):
+    return command("tmux", "-S", socket_path, *args)
+
+
+def tmux_rpc(method, params):
+    if method == "agent.list":
+        rows = tmux("list-panes", "-a", "-F",
+                    '#{pane_id}\t#{pane_pid} #{pane_current_command}\t#{pane_current_path}\t#{@workmux_hook}').splitlines()
+        result = []
+        for row in rows:
+            pane_id, live_identity, cwd, stored = row.split("\t", 3)
+            record = json.loads(stored) if stored else {}
+            if record.get("identity") != live_identity:
+                if tmux("show-options", "-pqv", "-t", pane_id, "@footer").strip():
+                    tmux("set-option", "-pu", "-t", pane_id, "@footer")
+                continue
+            result.append({"pane_id": pane_id, "terminal_id": pane_id + ":" + live_identity,
+                           "cwd": cwd, "agent": record["provider"],
+                           "agent_session": {"value": record["session"]}})
+        return {"agents": result}
+    if method == "pane.process_info":
+        tty = tmux("display-message", "-p", "-t", params["pane_id"], "#{pane_tty}").strip()
+        processes = []
+        for line in command("ps", "-t", tty, "-o", "pid=,comm=").splitlines():
+            pid, executable = line.strip().split(None, 1)
+            if Path(executable).name in ("codex", ".codex-wrapped"):
+                processes.append({"pid": int(pid), "argv": [executable]})
+        return {"process_info": {"foreground_processes": processes}}
+    if method == "pane.report_metadata":
+        pane_id = params["pane_id"]
+        width = int(tmux("display-message", "-p", "-t", pane_id, "#{pane_width}").strip())
+        with (scripts.parent / "pane-footer.toml").open("rb") as file:
+            config = tomllib.load(file)
+        tmux("set-option", "-p", "-t", pane_id, "@footer", render_footer(params["tokens"], config, width))
+        return {}
+    raise RpcError(f"unsupported tmux footer operation: {method}")
+
+
+def render_footer(tokens, config, width):
+    if not config.get("enabled", True):
+        return ""
+    options = dict(line.split(" ", 1) for line in tmux("show-options", "-g").splitlines() if " " in line)
+    palette = {}
+    for name in ("red", "green", "yellow", "blue", "mauve", "teal", "peach", "text", "subtext0", "surface0"):
+        option = {"text": "fg", "subtext0": "subtext_0", "surface0": "surface_0"}.get(name, name)
+        palette[name] = options.get("@thm_" + option, "default").strip('"')
+    names = dict(access="access", mode="mode", directory="dir", branch="branch", model="model_name",
+                 effort="effort", context="ctx", tokens="tokens", five_hour="5h", weekly="week", credits="credits")
+
+    def color(name):
+        return palette.get(name, name)
+
+    def clean(value):
+        # Treat session metadata as text, never as tmux format or style directives.
+        return "".join(c for c in str(value) if not unicodedata.category(c).startswith("C")).replace("#", "＃")
+
+    def field(name):
+        value = tokens.get("footer_" + names[name])
+        if value is None or value == "":
+            return []
+        tint = config.get(name + "_color", "text")
+        if name == "access":
+            tint = config.get("access_colors", {}).get(value.strip("[]"), tint)
+        if name in ("context", "five_hour", "weekly"):
+            percent = float(value)
+            tint = config.get("critical_color", "red") if percent > config.get("critical_percent", 95) else (
+                config.get("warning_color", "yellow") if percent > config.get("warning_percent", 80)
+                else config.get("usage_color", "green"))
+            value = f'{config.get(name + "_label", name)} {percent:g}%'
+        if name == "tokens":
+            value = f'{config.get("tokens_label", "spent")} {value}'
+        if name == "credits" and value == "limit":
+            tint = config.get("critical_color", "red")
+        return [(clean(value), color(tint))]
+
+    def side(items):
+        groups = []
+        for item in items:
+            if isinstance(item, list):
+                if not any(field(part) for part in item if part in names):
+                    continue
+                group = [piece for part in item for piece in (
+                    field(part) if part in names else [(clean(part), color("text"))])]
+            else:
+                group = field(item)
+            if group:
+                if groups:
+                    groups.append((config.get("separator", " · "), color(config.get("separator_color", "text"))))
+                groups.extend(group)
+        return groups
+
+    left, right = side(config["left"]), side(config["right"])
+    def cells(parts):
+        return sum(0 if unicodedata.combining(c) else 2 if unicodedata.east_asian_width(c) in ("W", "F") else 1
+                   for text, _ in parts for c in text)
+    spacing = max(1, width - 2 - cells(left) - cells(right))
+    background = color(config.get("background_color", "surface0"))
+    return "".join(f"#[fg={tint},bg={background}]{value}" for value, tint in
+                   left + [(" " * spacing, color("text"))] + right) + "#[default]"
 
 
 class Pane:

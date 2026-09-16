@@ -115,8 +115,29 @@ if [[ -f $home/.codex/hooks.json ]]; then
     --arg name hooks --argjson protected "$protected" -f "$config/merge.jq" > "$scratch/hooks"
   if [[ $(jq -Sc . "$home/.codex/hooks.json") == "$(jq -Sc . "$scratch/hooks")" ]]; then rm "$scratch/hooks"; fi
 fi
+for agent in claude codex; do
+  if [[ $agent == claude ]]; then
+    source=$scratch/claude
+    live=$home/.claude/settings.json
+  else
+    source=$scratch/hooks
+    live=$home/.codex/hooks.json
+  fi
+  if [[ -f $source ]]; then cp "$source" "$scratch/hook-source"
+  elif [[ -f $live ]]; then cp "$live" "$scratch/hook-source"
+  else printf '{}\n' > "$scratch/hook-source"; fi
+  # Replace only our hook commands; other integrations retain their ordering.
+  jq --arg agent "$agent" --slurpfile wanted "$config/workmux-hooks.json" '
+    .hooks = ((.hooks // {}) | with_entries(.value |= map(
+      .hooks |= map(select(((.command // "") | contains("~/.config/agent-setup/workmux-hook.sh")) | not)) |
+      select(.hooks | length > 0)))) |
+    reduce ($wanted[0][$agent].hooks | to_entries[]) as $event (. ;
+      .hooks[$event.key] = ((.hooks[$event.key] // []) + $event.value))
+  ' "$scratch/hook-source" > "$source"
+done
+
 # Reject directory conflicts before writing any merged settings.
-for package in agents claude herdr; do
+for package in agents claude herdr workmux; do
   while IFS= read -r -d '' source; do
     target=$home/${source#"$repo/$package/"}
     if [[ -e $target && $target -ef $source ]]; then continue; fi
@@ -131,7 +152,7 @@ done
 [[ ! -f $scratch/hooks ]] || write "$home/.codex/hooks.json" "$scratch/hooks"
 [[ ! -f $scratch/claude-keybindings ]] || write "$home/.claude/keybindings.json" "$scratch/claude-keybindings"
 [[ ! -f $scratch/claude-theme ]] || write "$home/.claude/themes/catppuccin-mocha.json" "$scratch/claude-theme"
-for package in agents claude herdr; do
+for package in agents claude herdr workmux; do
   while IFS= read -r -d '' source; do
     target=$home/${source#"$repo/$package/"}
     if [[ -e $target && $target -ef $source ]]; then continue; fi
@@ -144,12 +165,12 @@ for package in agents claude herdr; do
     fi
   done < <(find "$repo/$package" \( -name .DS_Store -o -name __pycache__ \) -prune -o \( -type f -o -type l \) -print0)
 done
-if [[ $apply == true ]]; then stow --no-folding --ignore='__pycache__|\.DS_Store' --dir "$repo" --target "$home" agents claude herdr; fi
+if [[ $apply == true ]]; then stow --no-folding --ignore='__pycache__|\.DS_Store' --dir "$repo" --target "$home" agents claude herdr workmux; fi
 if [[ $integrations == true ]]; then
   integration_status=$(herdr integration status)
   while IFS= read -r agent; do
     case "$agent" in claude|codex) ;; *) echo "Unknown integration: $agent" >&2; exit 1;; esac
-    if grep -q "^$agent: installed" <<< "$integration_status"; then continue; fi
+    if grep -Eq "^$agent: (installed|current)( |$)" <<< "$integration_status"; then continue; fi
     echo "install herdr integration $agent"
     if [[ $apply == true ]]; then
       for relative in .claude/settings.json .claude/hooks/herdr-agent-state.sh .codex/hooks.json .codex/herdr-agent-state.sh .codex/config.toml; do save "$home/$relative"; done

@@ -7,13 +7,19 @@ home=$scratch/home
 mkdir -p "$home/.claude" "$home/.codex"
 mkdir -p "$home/.claude/skills/rearchitect"
 printf 'local skill notes' > "$home/.claude/skills/rearchitect/local-notes.txt"
-printf '{"permissions":{"allow":["Bash(pnpm:*)"]},"unknown":42}\n' > "$home/.claude/settings.json"
+printf '{"permissions":{"allow":["Bash(pnpm:*)"]},"unknown":42,"hooks":{"Stop":[{"hooks":[{"type":"command","command":"keep-claude-hook"}]}]}}\n' > "$home/.claude/settings.json"
 printf 'original agreement' > "$home/.claude/CLAUDE.md"
 printf 'sandbox_mode="read-only"\n[projects."/example"]\ntrust_level="trusted"\n' > "$home/.codex/config.toml"
 printf '[hooks]\nmanaged_dir="/example/hooks"\n[hooks.state.example]\ntrusted_hash="keep-trust"\n' >> "$home/.codex/config.toml"
+printf '{"hooks":{"Stop":[{"hooks":[{"type":"command","command":"keep-codex-hook"}]}]}}\n' > "$home/.codex/hooks.json"
 cp "$home/.claude/settings.json" "$scratch/original"
 cp "$home/.codex/config.toml" "$scratch/codex"
 bash "$repo/agents/.config/agent-setup/apply.sh" --repo "$repo" --home "$home" --apply > "$scratch/first"
+for agent in claude codex; do
+  file=$home/.$agent/hooks.json
+  [[ $agent != claude ]] || file=$home/.claude/settings.json
+  jq -e --arg agent "$agent" '[.hooks.Stop[].hooks[].command] | length == 2 and any(. == ("keep-" + $agent + "-hook")) and any(contains("workmux-hook.sh"))' "$file" >/dev/null
+done
 jq -e '.permissions.allow == ["Bash(pnpm:*)"] and .unknown == 42' "$home/.claude/settings.json" >/dev/null
 dasel -i toml -o json < "$home/.codex/config.toml" | jq -e '.sandbox_mode == "workspace-write" and .projects["/example"].trust_level == "trusted"' >/dev/null
 dasel -i toml -o json < "$home/.codex/config.toml" | jq -e '.hooks.state.example.trusted_hash == "keep-trust" and .hooks.managed_dir == "/example/hooks"' >/dev/null

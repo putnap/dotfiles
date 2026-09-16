@@ -6,13 +6,24 @@
     nix-darwin.url = "github:LnL7/nix-darwin";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
     nix-homebrew.url = "github:zhaofengli-wip/nix-homebrew";
+    workmux.url = "github:raine/workmux";
+    workmux.inputs.nixpkgs.follows = "nixpkgs";
     # home-manager.url = "github:nix-community/home-manager";
   };
 
-  outputs = inputs@{ self, nix-darwin, nixpkgs, nix-homebrew, home-manager }:
+  outputs = inputs@{ self, nix-darwin, nixpkgs, nix-homebrew, home-manager, workmux }:
     let
       system = "aarch64-darwin";
       user = "papu";
+      # Upstream's repository-removal test invokes tmux has-session.
+      workmuxPackage = workmux.packages.${system}.default.overrideAttrs (old: {
+        nativeCheckInputs = (old.nativeCheckInputs or []) ++ [ nixpkgs.legacyPackages.${system}.tmux ];
+        nativeBuildInputs = (old.nativeBuildInputs or []) ++ [ nixpkgs.legacyPackages.${system}.makeWrapper ];
+        # macOS's long TMPDIR can exceed the sidebar's Unix socket path limit.
+        postFixup = (old.postFixup or "") + ''
+          wrapProgram "$out/bin/workmux" --set TMPDIR /tmp
+        '';
+      });
       configuration = { pkgs, config, ... }: {
 
         system.primaryUser = user;
@@ -45,6 +56,7 @@
                 imagemagick
                 neovim
                 tmux
+                workmuxPackage
                 tmux-sessionizer
                 oh-my-posh
                 fzf
@@ -297,8 +309,11 @@
       };
     in
     {
-      packages.${system}.herdr = import ./herdr-package.nix {
-        pkgs = nixpkgs.legacyPackages.${system};
+      packages.${system} = {
+        workmux = workmuxPackage;
+        herdr = import ./herdr-package.nix {
+          pkgs = nixpkgs.legacyPackages.${system};
+        };
       };
       darwinConfigurations.mac = nix-darwin.lib.darwinSystem {
         modules = [

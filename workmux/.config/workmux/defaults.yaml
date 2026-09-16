@@ -1,0 +1,33 @@
+agent: codex
+agents:
+  claude:
+    type: claude
+    args: [--dangerously-skip-permissions]
+nerdfont: true
+status_format: false
+panes:
+  - command: nvim
+  - command: <agent>
+    split: horizontal
+    percentage: 40
+    focus: true
+layouts:
+  shell:
+    panes:
+      - command: nvim
+      - split: horizontal
+        percentage: 40
+        focus: true
+  solo:
+    panes:
+      - command: <agent>
+        focus: true
+sidebar:
+  position: left
+  width: 36
+  layout: tiles
+  templates:
+    tiles:
+      - '{agent_icon} {primary} {pane_suffix} {fill} {elapsed}'
+      - '{secondary} {fill} {git_stats}'
+      - '{pane_title} {fill} {pr_number} {pr_checks}'
