@@ -8,10 +8,13 @@
     nix-homebrew.url = "github:zhaofengli-wip/nix-homebrew";
     workmux.url = "github:raine/workmux";
     workmux.inputs.nixpkgs.follows = "nixpkgs";
+    # Source only: upstream ships no flake.
+    clauth.url = "github:uwuclxdy/clauth";
+    clauth.flake = false;
     # home-manager.url = "github:nix-community/home-manager";
   };
 
-  outputs = inputs@{ self, nix-darwin, nixpkgs, nix-homebrew, home-manager, workmux }:
+  outputs = inputs@{ self, nix-darwin, nixpkgs, nix-homebrew, home-manager, workmux, clauth }:
     let
       system = "aarch64-darwin";
       user = "papu";
@@ -24,6 +27,14 @@
           wrapProgram "$out/bin/workmux" --set TMPDIR /tmp
         '';
       });
+      clauthPackage = nixpkgs.legacyPackages.${system}.rustPlatform.buildRustPackage {
+        pname = "clauth";
+        version = (builtins.fromTOML (builtins.readFile "${clauth}/Cargo.toml")).package.version;
+        src = clauth;
+        cargoLock.lockFile = "${clauth}/Cargo.lock";
+        # The daemon's TLS tests resolve this host's FQDN.
+        nativeCheckInputs = [ nixpkgs.legacyPackages.${system}.unixtools.hostname ];
+      };
       configuration = { pkgs, config, ... }: {
 
         system.primaryUser = user;
@@ -75,6 +86,7 @@
                 (import ./herdr-package.nix { inherit pkgs; })
                 cloudflared
                 codex
+                clauthPackage
 
                 # dev SDKs
                 python3
@@ -138,6 +150,22 @@
             KeepAlive = true;
             StandardOutPath = "/Users/${user}/Library/Logs/codex-remote.log";
             StandardErrorPath = "/Users/${user}/Library/Logs/codex-remote.error.log";
+          };
+        };
+
+        # --standby yields to a daemon started by hand instead of exiting into a
+        # KeepAlive restart loop. Store paths stay out of the plist, as above.
+        launchd.user.agents.clauth = {
+          command = "/run/current-system/sw/bin/clauth daemon --standby";
+          environment = {
+            HOME = "/Users/${user}";
+            PATH = "/run/current-system/sw/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin";
+          };
+          serviceConfig = {
+            RunAtLoad = true;
+            KeepAlive = true;
+            StandardOutPath = "/Users/${user}/Library/Logs/clauth-daemon.log";
+            StandardErrorPath = "/Users/${user}/Library/Logs/clauth-daemon.error.log";
           };
         };
 
