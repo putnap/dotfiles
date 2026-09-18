@@ -57,11 +57,13 @@
             <key code="22" output="š"/>
             <key code="23" output="į"/>
             <key code="24" output="ž"/>
-            <key code="25" output="&#x201e;"/> <!-- DOUBLE LOW-9 QUOTATION MARK -->
+            <key code="25" output="9"/> 
+            <!-- <key code="25" output="&#x201e;"/> --> <!-- DOUBLE LOW-9 QUOTATION MARK -->
             <key code="26" output="ų"/>
             <key code="27" output="-"/>
             <key code="28" output="ū"/>
-            <key code="29" output="&#x201c;"/> <!-- LEFT DOUBLE QUOTATION MARK -->
+            <key code="29" output="0"/>
+            <!-- <key code="29" output="&#x201c;"/> --> <!-- LEFT DOUBLE QUOTATION MARK --> 
             <key code="30" output="]"/>
             <key code="31" output="o"/>
             <key code="32" output="u"/>
@@ -309,11 +311,11 @@
             <key code="22" output="Š"/>
             <key code="23" output="Į"/>
             <key code="24" output="Ž"/>
-            <key code="25" output="&#x201e;"/> <!-- DOUBLE LOW-9 QUOTATION MARK -->
+            <key code="25" output="("/> <!-- DOUBLE LOW-9 QUOTATION MARK -->
             <key code="26" output="Ų"/>
             <key code="27" output="-"/>
             <key code="28" output="Ū"/>
-            <key code="29" output="&#x201c;"/> <!-- LEFT DOUBLE QUOTATION MARK -->
+            <key code="29" output=")"/> <!-- LEFT DOUBLE QUOTATION MARK -->
             <key code="30" output="]"/>
             <key code="31" output="O"/>
             <key code="32" output="U"/>
