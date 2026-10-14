@@ -6,35 +6,20 @@
     nix-darwin.url = "github:LnL7/nix-darwin";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
     nix-homebrew.url = "github:zhaofengli-wip/nix-homebrew";
-    workmux.url = "github:raine/workmux";
-    workmux.inputs.nixpkgs.follows = "nixpkgs";
-    # Source only: upstream ships no flake.
-    clauth.url = "github:uwuclxdy/clauth";
+    # The release binary: a source build recompiles on every nixpkgs bump.
+    # `nix flake update` refetches latest, so nixr still upgrades it.
+    clauth.url = "file+https://github.com/uwuclxdy/clauth/releases/latest/download/clauth-macos-aarch64";
     clauth.flake = false;
     # home-manager.url = "github:nix-community/home-manager";
   };
 
-  outputs = inputs@{ self, nix-darwin, nixpkgs, nix-homebrew, home-manager, workmux, clauth }:
+  outputs = inputs@{ self, nix-darwin, nixpkgs, nix-homebrew, home-manager, clauth }:
     let
       system = "aarch64-darwin";
       user = "papu";
-      # Upstream's repository-removal test invokes tmux has-session.
-      workmuxPackage = workmux.packages.${system}.default.overrideAttrs (old: {
-        nativeCheckInputs = (old.nativeCheckInputs or []) ++ [ nixpkgs.legacyPackages.${system}.tmux ];
-        nativeBuildInputs = (old.nativeBuildInputs or []) ++ [ nixpkgs.legacyPackages.${system}.makeWrapper ];
-        # macOS's long TMPDIR can exceed the sidebar's Unix socket path limit.
-        postFixup = (old.postFixup or "") + ''
-          wrapProgram "$out/bin/workmux" --set TMPDIR /tmp
-        '';
-      });
-      clauthPackage = nixpkgs.legacyPackages.${system}.rustPlatform.buildRustPackage {
-        pname = "clauth";
-        version = (builtins.fromTOML (builtins.readFile "${clauth}/Cargo.toml")).package.version;
-        src = clauth;
-        cargoLock.lockFile = "${clauth}/Cargo.lock";
-        # The daemon's TLS tests resolve this host's FQDN.
-        nativeCheckInputs = [ nixpkgs.legacyPackages.${system}.unixtools.hostname ];
-      };
+      clauthPackage = nixpkgs.legacyPackages.${system}.runCommand "clauth" {} ''
+        install -Dm755 ${clauth} $out/bin/clauth
+      '';
       configuration = { pkgs, config, ... }: {
 
         system.primaryUser = user;
@@ -67,7 +52,6 @@
                 imagemagick
                 neovim
                 tmux
-                workmuxPackage
                 tmux-sessionizer
                 oh-my-posh
                 fzf
@@ -113,7 +97,6 @@
                 kubectl
                 kubernetes-helm
                 kustomize
-                terraform
 
                 # mac setup
                 pam-reattach
@@ -189,6 +172,9 @@
             "modem-dev/tap/hunk"
             "vite-plus"
             "bjarneo/cliamp/cliamp"
+            # Prebuilt release binaries; Nix compiled these on every nixpkgs bump.
+            "raine/workmux/workmux"
+            "hashicorp/tap/terraform"
           ];
           taps = [
             "FelixKratz/formulae"
@@ -337,9 +323,6 @@
       };
     in
     {
-      packages.${system} = {
-        workmux = workmuxPackage;
-      };
       darwinConfigurations.mac = nix-darwin.lib.darwinSystem {
         modules = [
           configuration

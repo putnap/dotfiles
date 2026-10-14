@@ -3,9 +3,8 @@
 Run tmux directly in a terminal. Herdr and tmux are separate alternatives; neither
 runs inside the other. Herdr remains installed during the trial.
 
-The Nix flake pins workmux, supplies tmux to its upstream test environment, and
-wraps it with a short temporary path to fit macOS's Unix-socket length limit.
-The existing agent installer installs the Claude/Codex hooks with backups and
+The Nix flake installs workmux's prebuilt release from the `raine/workmux`
+Homebrew tap. The existing agent installer installs the Claude/Codex hooks with backups and
 preserves other integrations. `install.sh` also links the tmux configuration.
 For this trial the tested build is also installed in the user Nix profile as
 `workmux-eb2867f`; a system rebuild was not needed. Once a later Darwin rebuild
@@ -112,7 +111,6 @@ bash tests/herdr-footer-metrics.sh
 bash tests/herdr-footer-startup.sh
 bash tests/integration-herdr.sh
 HERDR_CONFIG_PATH="$PWD/herdr/.config/herdr/config.toml" herdr config check
-nix build "path:$PWD/nix/.config/nix#workmux" --no-link
 ```
 
 The tests create disposable homes/sockets. They do not send model prompts or
