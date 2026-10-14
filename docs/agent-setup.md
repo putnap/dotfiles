@@ -21,15 +21,7 @@ For a pinned refresh without updating dependencies, run
 the same automatic setup. To review settings changes without applying them, run
 `bash agents/.config/agent-setup/apply.sh --repo "$HOME/dotfiles" --integrations`.
 
-Production Herdr uses `nix/.config/nix/herdr-package.nix`, the same package as the
-preview: pane footer, popup titles, and preserved launch flags on restore. The
-package runs the targeted Rust tests. Build just the binary with
-`nix build ./nix/.config/nix#herdr`. `nixr` updates flake inputs and attempts the
-Herdr patches on the selected version, without an exact-version guard.
-Patch application, compilation, failing regression tests, or an empty regression
-test selection fail the build before activation. Herdr checks all three patch
-suites. Codex uses the unmodified Nixpkgs package to avoid local source rebuilds.
-Updates still follow the
+Herdr and Codex use the unmodified Nixpkgs packages. Updates follow the
 versions packaged in Nixpkgs and recorded in `flake.lock`.
 
 The `codex-remote` launchd agent names `/run/current-system/sw/bin/codex` rather
@@ -44,13 +36,7 @@ started on the old one are still attached.
 
 Once active work is finished, run `herdr server stop`, then reopen `herdr` to use
 the new binary. Stopping a server terminates its pane processes; the declared
-restore settings preserve sessions and their saved launch flags. Setup never
-stops the server for you. Footer preferences live in
-`herdr/.config/herdr/pane-footer.toml`; prefix+r reloads presentation changes.
-The main `config.toml` stays compatible with stock Herdr. Only the patched
-binary reads the adjacent `pane-footer.toml`, during startup and reload. An
-explicit `HERDR_CONFIG_PATH` looks for the extension beside that selected file,
-so isolated configurations do not inherit production footer settings.
+restore settings preserve sessions. Setup never stops the server for you.
 
 `install.sh` runs this same setup before the other Stow packages. The flake declares Stow, jq, dasel 3+, fzf and herdr; peon-ping is declared through its Homebrew integration. Apply the flake first. Scripts use Bash and macOS utilities, with no language-package installation or downloads during setup.
 
@@ -102,18 +88,10 @@ The default agent is Codex for this trial. Claude's pane entrypoint retains `--d
 
 Claude's teammate preview moves to Alt+O. Ctrl+Shift+Minus stays herdr split; Claude undo retains Ctrl+Underscore. Shift+Up/Down stay workspace navigation; Claude's other message-selector top/bottom shortcuts remain. Specialized team/task/mode controls retain native semantics.
 
-Both agents use Herdr's themed per-pane footer: directory, branch, access badge,
-model and effort, context used, and reported usage limits. Codex keeps its native
-Catppuccin syntax theme, keypress hints, and native context indicator. Codex
-uses rollout metadata for its footer, so idle context changes may wait for
-another logged turn; permission changes are read from the settings event Codex
-writes immediately, and usage figures from the account every two minutes.
-Claude's permission badge follows its transcript for the same reason. Usage is account-wide, so every pane of one provider
-shows the newest reading rather than its own session's last one. Claude's status callback feeds the collector
-without printing another line. Independent pane collectors check for changes
-every 250 ms. Each permission badge takes the colour its agent shows for that
-mode, and a Codex pane grows a second badge when its collaboration mode is not
-the default one.
+Claude's own statusline (`claude/.claude/statusline-command.sh`) shows
+directory, branch, model and effort, and context used inside each Herdr pane.
+Codex keeps its native Catppuccin syntax theme, keypress hints, and native
+context indicator.
 
 Fork shortcuts also work while only the herdr package is Stowed: they resolve the shared helper from this checkout. Older Claude processes can use their exact PID/session registration. Codex processes started before the herdr integration was installed need to be resumed in a new CLI process to register their session identity; the fork command never guesses with `--last`.
 

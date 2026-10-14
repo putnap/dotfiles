@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 input=$(cat)
+# The tmux pane footer reads Claude's metrics from this cache.
+printf '%s' "$input" | bash ~/.config/herdr/footer/claude-cache.sh || true
 
 cwd=$(echo "$input" | jq -r '.workspace.current_dir // .cwd')
 model=$(echo "$input" | jq -r '.model.display_name // ""')

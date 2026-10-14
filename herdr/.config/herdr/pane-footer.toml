@@ -1,5 +1,4 @@
-# Read only by the pane-footer patch, alongside config.toml.
-# Stock Herdr ignores this file. Reload with prefix+r after editing.
+# Field layout for the tmux pane-border footer (footer/collect.sh --tmux).
 enabled = true
 
 # Available fields: access, mode, directory, branch, model, effort, context, tokens,

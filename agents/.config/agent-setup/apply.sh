@@ -195,7 +195,6 @@ done
 write "$state" "$scratch/owned"
 if [[ $apply == true && $home == "$real_home" ]] && herdr status --json | jq -e '.server.running' >/dev/null; then
   herdr server reload-config
-  herdr plugin action invoke collect --plugin agent-footer >/dev/null
 fi
 [[ $count == 0 ]] || echo "Rollback manifest: $backup/manifest.json"
 if [[ $apply == true ]]; then echo 'Applied.'; else echo 'Dry run only. Use --apply to write.'; fi

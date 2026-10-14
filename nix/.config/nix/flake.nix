@@ -83,7 +83,7 @@
                 gh-dash
                 opencode
                 atuin
-                (import ./herdr-package.nix { inherit pkgs; })
+                herdr
                 cloudflared
                 codex
                 clauthPackage
@@ -339,9 +339,6 @@
     {
       packages.${system} = {
         workmux = workmuxPackage;
-        herdr = import ./herdr-package.nix {
-          pkgs = nixpkgs.legacyPackages.${system};
-        };
       };
       darwinConfigurations.mac = nix-darwin.lib.darwinSystem {
         modules = [

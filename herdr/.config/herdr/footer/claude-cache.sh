@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Used only by the preview Claude statusLine command. No model content is stored.
+# Fed by Claude's statusLine command for the tmux footer. No model content is stored.
 set -euo pipefail
 input=$(cat)
 [[ -n ${HERDR_SOCKET_PATH:-}${TMUX:-} ]] || exit 0
