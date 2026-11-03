@@ -258,6 +258,13 @@
             "com.apple.keyboard.fnState" = true;
             _HIHideMenuBar = true;
           };
+          # macOS 26 reads these keys, not the ByHost ones system.defaults.controlcenter
+          # writes. All three stay one click away in Control Centre itself.
+          CustomUserPreferences."com.apple.controlcenter" = {
+            "NSStatusItem VisibleCC WiFi" = false;
+            "NSStatusItem VisibleCC Sound" = false;
+            "NSStatusItem VisibleCC NowPlaying" = false;
+          };
         };
 
         # Keyboard
