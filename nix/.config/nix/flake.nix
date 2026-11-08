@@ -193,6 +193,7 @@
             "stretchly"
             "ghostty"
             "claude-code@latest"
+            "claude"
             "zen"
             "aerospace"
             "sf-symbols"
@@ -203,10 +204,9 @@
             "sublime-text"
             "postman"
             "visual-studio-code"
-            "vorssaint"
             "docker-desktop"
             "transmission"
-            "claude"
+            "vorssaint"
           ];
           masApps = {
             "WhatsApp" = 310633997;
@@ -308,6 +308,15 @@
               exec bash "$repo/agents/.config/agent-setup/apply.sh" --repo "$repo" --apply --integrations
             ' || exit 1
 
+          # Free ⌘Space for Raycast. -dict-add edits only Spotlight's entry (64);
+          # CustomUserPreferences would overwrite every other system shortcut.
+          echo "disabling Spotlight's ⌘Space..." >&2
+          launchctl asuser "$(id -u -- ${user})" sudo --user=${user} -- \
+            defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 64 \
+            '<dict><key>enabled</key><false/><key>value</key><dict><key>parameters</key><array><integer>32</integer><integer>49</integer><integer>1048576</integer></array><key>type</key><string>standard</string></dict></dict>'
+          launchctl asuser "$(id -u -- ${user})" sudo --user=${user} -- \
+            /System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings -u
+
           # The nix.gc launchd timer below never fires: every rebuild rewrites and
           # reloads its plist, which re-registers the calendar trigger from scratch
           # and drops any pending event. Collect here instead, where it always runs.
@@ -323,15 +332,6 @@
 
         # Necessary for using flakes on this system.
         nix.settings.experimental-features = "nix-command flakes";
-          # Free ⌘Space for Raycast. -dict-add edits only Spotlight's entry (64);
-          # CustomUserPreferences would overwrite every other system shortcut.
-          echo "disabling Spotlight's ⌘Space..." >&2
-          launchctl asuser "$(id -u -- ${user})" sudo --user=${user} -- \
-            defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 64 \
-            '<dict><key>enabled</key><false/><key>value</key><dict><key>parameters</key><array><integer>32</integer><integer>49</integer><integer>1048576</integer></array><key>type</key><string>standard</string></dict></dict>'
-          launchctl asuser "$(id -u -- ${user})" sudo --user=${user} -- \
-            /System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings -u
-
 
         # Automatic store optimization - runs weekly on Sunday at 3am
         nix.optimise = {
