@@ -20,8 +20,11 @@
 		<string>com.apple.keyboardlayout.lithuaniannum.lithuaniannum</string>
 		<key>TISIntendedLanguage</key>
 		<string>lt</string>
-		<key>TISIconIsTemplate</key>
-		<true/>
+		<key>TISIconLabels</key>
+		<dict>
+			<key>Primary</key>
+			<string>LT</string>
+		</dict>
 	</dict>
 </dict>
 </plist>
