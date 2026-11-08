@@ -78,10 +78,8 @@ The default agent is Claude, started as plain `claude`. Codex receives no transl
 | --- | --- |
 | prefix + Shift+C | New tab with configured default agent |
 | Ctrl+Shift+C | New split with configured default agent |
-| prefix + Alt+C | Choose Claude or Codex for a new tab |
 | prefix + F / Shift+F | Fork focused session into pane / tab |
-| prefix + A | Pick any running agent |
-| Ctrl+Shift+I | Jump to agent needing attention |
+| prefix + < | Rename the focused Claude session (empty: Claude names it) |
 | prefix + Alt+M | Toggle Peon sounds |
 | Ctrl+G in either agent | External editor (`EDITOR=nvim`) |
 | Ctrl+O in either agent | Native transcript view |

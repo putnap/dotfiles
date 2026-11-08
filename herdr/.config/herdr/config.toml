@@ -183,6 +183,14 @@ type = "plugin_action"
 command = "agents.new-pane"
 description = "new pane with the default agent"
 
+# prefix+< sits beside tmux's prefix+, for the tab, and renames the agent's session, which
+# the pane's title follows.
+[[keys.command]]
+key = "prefix+<"
+type = "plugin_action"
+command = "agents.rename"
+description = "rename the Claude session (empty: Claude names it)"
+
 # smart-splits (local plugin): ctrl+hjkl navigates nvim splits and herdr panes as
 # one surface. Resize moved to ctrl+shift+arrows so plain ctrl+arrows can be word
 # motion in every app -- see KEYBINDINGS.md.
@@ -256,12 +264,6 @@ pane_history = true
 # Peon owns agent sounds and banners through herdr events.
 [ui.sound]
 enabled = false
-
-[[keys.command]]
-key = "prefix+alt+c"
-type = "plugin_action"
-command = "agents.choose"
-description = "choose agent for a new tab"
 
 [[keys.command]]
 key = "prefix+alt+m"

@@ -12,9 +12,6 @@ case "${1:-}" in
     case "$placement" in tab|split) ;; *) fail 'invalid placement';; esac
     config=${HERDR_PLUGIN_CONFIG_DIR:-$HOME/.config/herdr/plugins/config/agents}/config.toml
     agent=$(dasel -i toml -o json < "$config" | jq -er '.default_agent')
-    if [[ ${3:-} == --choose ]]; then
-      agent=$(printf 'codex\nclaude\n' | fzf --prompt='launch> ' --height=100% --no-multi) || exit 0
-    fi
     case "$agent" in claude|codex) ;; *) fail "unsupported default agent: $agent";; esac
     context=${HERDR_PLUGIN_CONTEXT_JSON:-null}
     cwd=$(jq -r '.focused_pane_cwd // .workspace_cwd // empty' <<< "$context")
