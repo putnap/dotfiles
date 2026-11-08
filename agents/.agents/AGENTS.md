@@ -23,6 +23,23 @@
 
 Ask: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
 
+## 2a. Recipe style — THE bar for all code, always
+
+**Code must be simple enough that a junior engineer can read it top to bottom without asking anyone. This is not optional and not only for "simple" files: engine code, startup code and glue all meet it. If a reader has to hold more than one idea at a time, rewrite it. Say "recipe style" and this section is what is meant.**
+
+- **A function reads as a recipe.** Its body is a short list of calls to well-named functions, in the order things happen. No early-return mazes, no callbacks that assign to outer variables.
+- **Names carry the intent, not comments.** If a block needs a comment to say what it does, extract it into a function whose name says it. Comments are for why, in a line or two. Numbered step comments belong only in a process entry point (a `main`), never sprinkled through library code.
+- **One composition root per process.** One file wires the process together, top to bottom. Everything below it takes what it needs as arguments and never asks where it is running or which role it is in.
+- **A table, not branches.** When a word (a role, a kind, a mode) decides behaviour, write one data table from the word to explicit values and read it in exactly one place.
+- **Explicit over clever.** Plain booleans over optional flags, a named type over an indexed or utility type, `if` over a `??=` trick, a generic function over `any`.
+- **Whatever starts something returns the way to stop it.** Setup and teardown live together; the caller registers shutdown once.
+- **One quirk, one helper.** A library workaround lives in one small named function with a two-line why-comment, never inline in the flow.
+- **Only parameters a caller passes, only members a caller reads.** No options "for later". This does NOT cover what the design names (roles, seams, stubs that refuse loudly): those stay, and removing them needs a question first.
+- **Parse once at the boundary, typed from there on.** No cast to read a field, no `any` flowing downstream. Tie related types together with one generic function.
+- **Failures are reported where an operator reads them**, as one structured line, in a fixed order of checks.
+
+The standard names for its parts, for searching or prompting: composition root, the stepdown rule (newspaper style), table-driven code, straight-line code.
+
 ## 3. Surgical changes
 
 **Touch only what you must. Clean up only your own mess.**
@@ -92,4 +109,8 @@ If asked for an unscoped deletion: refuse that path, offer read-only inspection 
 ## Instruct shorthand
 
 When the user says `Instruct <something>`, add or update a rule for it — in this file if it's universal, in the repo's own agent docs if it isn't.
+
+## Generated pages
+
+Write any HTML page, report or preview to `~/artifacts/<project>/` as a plain `.html` file with a dated name (`YYYY-MM-DD-topic.html`). Do not publish it anywhere else.
 
