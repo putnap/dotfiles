@@ -3,14 +3,15 @@
 // to a strip of space tiles instead of hiding it, so shift+up/down still walk it (tree.next / tree.previous).
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
-import { run, spaces, focused, theme, nextCommand, setAgentOrder } from "herdr";
+import { run, spaces, focused, theme, nextCommand, setAgentOrder, keys } from "herdr";
 import { Git } from "./git.js";
 import { buildTree, nextStop, latestAttention } from "./model.js";
 import { spaceColor, publishSpaceColors } from "./colors.js";
 import { askAccounts, accountsShelf } from "./accounts.js";
 
 const EXPANDED_WIDTH = 280;
-const COLLAPSED_WIDTH = 64;
+// The 20px icons with 11px either side.
+const COLLAPSED_WIDTH = 42;
 // Every row's text and icons start and end this far from the sidebar's edges, as its footer's.
 const INSET = 16;
 const ICONS = "mods/workspace-chrome";
@@ -175,7 +176,7 @@ function metaLine(t, row, program) {
     .child(div().flex_1().min_w(0).truncate().child(row.branch ?? "no branch"))
     .when(Boolean(row.pullRequest?.issue), (el) => el.child(linkChip(t, `tree-issue-${row.key}`, row.pullRequest.issue.id, t.muted, row.pullRequest.issue.url)))
     .when(Boolean(row.pullRequest), (el) => el.child(linkChip(t, `tree-pr-${row.key}`, `#${row.pullRequest.number}`, t[PULL_REQUEST_COLORS[row.pullRequest.state]] ?? t.dim, row.pullRequest.url)))
-    .when(Boolean(row.changes), (el) => el.child(changes(t, row.changes)))
+    .when(Boolean(row.changes), (el) => el.child(changes(t, row)))
     .when(Boolean(program?.icon), (el) => el.child(svg(program.icon).size(12).flex_none().text_color(program.color ?? t.dim)));
 }
 
@@ -186,10 +187,22 @@ function linkChip(t, id, label, color, url) {
     .child(label);
 }
 
-function changes(t, { added, removed }) {
-  return h_flex().flex_none().gap(3)
+// A checkout's uncommitted changes, which open Reviewer on them: where they show is where to look.
+function changes(t, row) {
+  const { added, removed } = row.changes;
+  return h_flex().id(`tree-changes-${row.key}`).flex_none().gap(3).px(3).cursor_pointer()
+    .hover((s) => s.bg(t.hover)).tooltip(REVIEW_TOOLTIP)
+    .on_click((_e, cx) => { cx.stop_propagation(); land(row); showReview(); })
     .child(div().text_color(t.ansi2).child(`+${added}`))
     .child(div().text_color(t.ansi1).child(`−${removed}`));
+}
+
+// The keys mod's prefix popup binds it (ctrl+\ r), which keys() can't see.
+const REVIEW_TOOLTIP = "Review these changes in hunk  ⌃\\ r";
+
+// Reviews open in hunk, in a pane beside the tab's (the keys mod's hunk-open).
+function showReview() {
+  run("keys.hunk-open");
 }
 
 function agentTitle(agent) {
@@ -237,16 +250,33 @@ function rowSurface(t, row, element) {
 // t3code's status slot: what needs a look as its icon in its colour (the word on hover), with how
 // long a working one has worked; else how long since anything changed.
 const STATUS = {
-  working: { label: "Working", color: "working", icon: "spinner.svg" },
+  working: { label: "Working", color: "working", icon: null },
   blocked: { label: "Needs you", color: "blocked", icon: null },
   done: { label: "Done", color: "done", icon: "circle-check.svg" },
 };
 
+// A terminal's braille spinner lying flat, a raised block sliding along three cells, its frames
+// swapped on the app's clock: an svg's spin() turns at about 30 fps, which visibly steps.
+const SPINNER_FRAMES = ["⣤⣀⣀", "⣀⣤⣀", "⣀⣀⣤", "⣀⣤⣀"];
+// An idle agent: the same cells, still and dim.
+const SPINNER_AT_REST = "⣀⣀⣀";
+// An agent waiting for you: braille's question sign (⠦) between resting cells, off for a beat.
+const QUESTION_FRAMES = ["⣀⠦⣀", "⣀⠦⣀", "⣀⠦⣀", "⣀⣀⣀"];
+
+function waitingQuestion(t, size) {
+  return div().text_size(size).text_color(t.blocked).frames(QUESTION_FRAMES, 350);
+}
+
+function workingSpinner(t, size) {
+  return div().text_size(size).text_color(t.working).frames(SPINNER_FRAMES, 140);
+}
+
 function statusSlot(t, agent) {
   const status = STATUS[agent.status];
   if (!status) return div().flex_none().text_size(11.5).text_color(t.dim).child(sinceChange(agent));
-  const icon = status.icon
-    ? svg(`${ICONS}/${status.icon}`).size(11).text_color(t[status.color]).when(agent.status === "working", (s) => s.spin(900))
+  const icon = agent.status === "working" ? workingSpinner(t, 10)
+    : agent.status === "blocked" ? waitingQuestion(t, 10)
+    : status.icon ? svg(`${ICONS}/${status.icon}`).size(11).text_color(t[status.color])
     : div().size(6).rounded(3).bg(t[status.color]);
   return h_flex().id(`tree-status-${agent.address}`).flex_none().gap(4).items_center().text_size(11.5).text_color(t[status.color])
     .tooltip(status.label)
@@ -280,21 +310,77 @@ function age(since) {
 
 const PULL_REQUEST_COLORS = { open: "ansi2", draft: "dim", merged: "ansi5", closed: "ansi1" };
 
-// herdr's compact sidebar: a tile a space, its most urgent agent as a dot.
+// herdr's compact sidebar: the expanded one's rows as one icon each, a project as its tile, an
+// agent as its status, a worktree or checkout as a branch; every icon one size and the focused
+// row lit full width.
 function collapsedView(tree) {
   const t = theme();
-  const tiles = tree.rows.filter((r) => r.kind === "folder").map((row) =>
-    div().id(`tree-tile-${row.space.id}`).relative().p(3).cursor_pointer()
-      .when(row.focused, (el) => el.bg(t.selected))
-      .hover((s) => s.bg(t.hover))
-      .on_click(() => land(row))
-      .child(spaceTile(t, row.space, 28))
-      .when(Boolean(STATUS[row.space.status]), (el) => el.child(
-        div().absolute().right(0).top(0).size(9).rounded(5).border(2).border_color(t.chrome).bg(t[STATUS[row.space.status]?.color]))));
-  return v_flex().size_full().items_center().pt(8).gap(4).overflow_y_scrollbar().children(tiles);
+  return v_flex().id("tree-collapsed").size_full().pt(4).pb(8).overflow_y_scrollbar()
+    .children(tree.rows.filter((row) => COLLAPSED_ICONS[row.kind]).map((row) => collapsedRow(t, row)));
 }
+
+const COLLAPSED_ICON_SIZE = 20;
+
+const COLLAPSED_ICONS = {
+  folder: (t, row) => collapsedTile(t, row),
+  agent: (t, row) => BUBBLE_ICONS[row.agent.status](t, row.here),
+  checkout: (t, row) => svg(`${ICONS}/${row.worktree ? "git-branch" : "branch"}.svg`).size(16).text_color(lit(t, row.here)),
+};
+
+const COLLAPSED_TOOLTIPS = {
+  folder: (row) => row.space.name,
+  agent: (row) => bubbleTooltip(row.agent),
+  checkout: (row) => (row.branch ? `${row.name} · ${row.branch}` : row.name),
+};
+
+function collapsedRow(t, row) {
+  return h_flex().id(`tree-collapsed-${row.key}`).w_full().h(28).flex_none().items_center().justify_center().cursor_pointer()
+    .when(row.kind === "folder", (el) => el.mt(8))
+    .tooltip(COLLAPSED_TOOLTIPS[row.kind](row))
+    .when(row.here, (el) => el.bg(t.selected))
+    .hover((s) => s.bg(t.hover))
+    .on_click(() => land(row))
+    .child(h_flex().size(COLLAPSED_ICON_SIZE).items_center().justify_center().child(COLLAPSED_ICONS[row.kind](t, row)));
+}
+
+// A closed folder hides its agents, so its tile carries the most urgent of them as a corner dot.
+function collapsedTile(t, folder) {
+  return div().relative()
+    .child(spaceTile(t, folder.space, COLLAPSED_ICON_SIZE))
+    .when(Boolean(folder.dot), (el) => el.child(
+      div().absolute().right(-3).top(-3).size(8).rounded(4).border(2).border_color(t.chrome).bg(t[STATUS[folder.dot]?.color])));
+}
+
+function bubbleTooltip(agent) {
+  const status = STATUS[agent.status];
+  return status ? `${agentTitle(agent)} · ${status.label}` : agentTitle(agent);
+}
+
+// The row you're on lights its icon, as its background; a status colour stays its own.
+function lit(t, here) {
+  return here ? t.foreground : t.dim;
+}
+
+const BUBBLE_ICONS = {
+  working: (t) => workingSpinner(t, 11),
+  blocked: (t) => waitingQuestion(t, 11),
+  done: (t) => svg(`${ICONS}/circle-check.svg`).size(16).text_color(t.done),
+  idle: (t, here) => div().text_size(11).text_color(lit(t, here)).child(SPINNER_AT_REST),
+};
 
 function spaceTile(t, space, size) {
   return h_flex().size(size).flex_none().bg(spaceColor(t, space)).items_center().justify_center()
     .text_size(size * 0.55).font_bold().text_color("#ffffff").child([...space.name][0]?.toUpperCase() ?? "?");
+}
+
+// A label with its shortcut as bound now (keys.json), e.g. "Settings  ⌘,"; herdr's old status bar
+// read the palette key the same way. Mods can't share files, so the tree, tab bar and top row each
+// keep a copy.
+const KEY_GLYPHS = { cmd: "⌘", ctrl: "⌃", shift: "⇧", alt: "⌥", option: "⌥" };
+
+function withKey(label, action) {
+  const bound = keys().find((k) => k.action === action);
+  if (!bound) return label;
+  const parts = bound.keys.endsWith("--") ? [...bound.keys.slice(0, -2).split("-"), "-"] : bound.keys.split("-");
+  return `${label}  ${parts.map((p) => KEY_GLYPHS[p] ?? p.toUpperCase()).join("")}`;
 }

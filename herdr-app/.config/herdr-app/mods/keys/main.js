@@ -19,6 +19,7 @@ const COMMANDS = {
   "nav-up": () => navigate("up"),
   "nav-right": () => navigate("right"),
   "break-pane": () => breakPane(),
+  "hunk-open": () => openHunk(),
   pressed: () => PREFIX[shared("keys.pressed")]?.[1](),
 };
 
@@ -56,6 +57,11 @@ const PREFIX = {
   w: ["go to…", () => run("mod.open", { name: "picker" })],
   "ctrl-o": ["go to…", () => run("mod.open", { name: "picker" })],
   g: ["lazygit", () => popup(["lazygit"])],
+  b: ["Blueprint on/off", () => toggleBlueprint()],
+  r: ["review in hunk on/off", () => toggleHunk()],
+  R: ["ask the agent to answer the hunk notes", () => askToAnswerNotes()],
+  e: ["walk through the changes", () => run("mod.open", { name: "walkthrough" })],
+  t: ["past agent sessions", () => run("mod.open", { name: "atuin-threads" })],
   h: ["GitHub dashboard", () => popup(["gh-dash"])],
   "ctrl-g": ["new worktree", () => worktree("new", 460, 280)],
   "alt-g": ["remove worktree", () => worktree("remove", 440, 260)],
@@ -222,6 +228,52 @@ async function permissionMode(sessionId) {
   const found = await exec("sh", ["-c", 'grep -ho \'"permissionMode":"[A-Za-z]*"\' "${CLAUDE_CONFIG_DIR:-$HOME/.claude}"/projects/*/"$1".jsonl | tail -n 1', "sh", sessionId]);
   const mode = found.stdout.match(/"permissionMode":"([A-Za-z]+)"/)?.[1];
   return mode ? ["--permission-mode", mode] : [];
+}
+
+// Blueprint draws beside the agent in a pane of its own: the key opens it, or closes the tab's.
+// hunk (a terminal diff viewer) reviews the focused checkout in a pane beside it: notes you write
+// with c, and the agent's replies, show beside the code while its window stays open.
+const HUNK_ARGV = ["hunk", "diff", "--watch", "--transparent-bg", "--agent-notes"];
+
+function toggleHunk() {
+  const shown = hunkPane();
+  if (shown) run("pane.close", { pane: shown.pane });
+  else openHunk();
+}
+
+function openHunk() {
+  const shown = hunkPane();
+  if (shown) run("pane.focus", { pane: shown.pane });
+  else run("pane.split", { direction: "right", argv: HUNK_ARGV });
+}
+
+function hunkPane() {
+  const tab = focused()?.tab;
+  return panes().find((p) => p.tab === tab && p.program?.name === "hunk") ?? null;
+}
+
+// The tab's agent gets how to answer, so it needs no hunk skill: list your notes, reply to each.
+const ANSWER_NOTES = [
+  "Answer my review notes in the live Hunk window for this repository.",
+  "Read them with `hunk session comment list --repo . --type user --json`,",
+  "then reply to each one in Hunk with `hunk session comment apply --repo . --stdin --focus`, one item per note on its own line",
+  "({\"filePath\": <its file>, \"newLine\": <first of its newRange> (or \"oldLine\" for a removed line), \"summary\": <your answer>, \"author\": \"Claude\"};",
+  "this hunk has no replyTo). Keep each answer to one or two plain sentences: no rationale, no quoting the note;",
+  "change code only where a note asks for it.",
+].join(" ");
+
+async function askToAnswerNotes() {
+  const tab = focused()?.tab;
+  const agent = agents().find((a) => a.tab === tab);
+  if (!agent) return notify({ title: "No agent in this tab", body: "Start one to answer the hunk notes", level: "info" });
+  await hc(["send", agent.address, ANSWER_NOTES]);
+}
+
+function toggleBlueprint() {
+  const tab = focused()?.tab;
+  const shown = panes().find((p) => p.tab === tab && p.mod === "blueprint");
+  if (shown) run("pane.close", { pane: shown.pane });
+  else run("pane.split", { direction: "right", mod: "blueprint" });
 }
 
 function focusedAgent() {

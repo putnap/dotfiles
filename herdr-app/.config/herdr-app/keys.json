@@ -100,5 +100,8 @@
     "ctrl-shift-j": "tree.inbox-next",
     "ctrl-shift-k": "tree.inbox-previous",
     "ctrl-shift-i": "tree.attention"
+  },
+  "mod:reviewer": {
+    "ctrl-h": "reviewer.leave"
   }
 }

@@ -3,8 +3,8 @@
   "type": "row",
   "titlebar": "none",
   "traffic_lights": [
-    12,
-    16
+    -100,
+    -100
   ],
   "background": "background",
   "terminal_padding": [
@@ -22,7 +22,7 @@
       "size": {
         "px": 280
       },
-      "min": 64,
+      "min": 42,
       "max": 480,
       "background": "chrome",
       "resizable": false,
@@ -101,10 +101,9 @@
               "type": "column",
               "hidden": true,
               "size": {
-                "px": 368
+                "weight": 1
               },
               "min": 280,
-              "max": 900,
               "children": [
                 {
                   "id": "panel-body",
@@ -122,7 +121,7 @@
                       "id": "changes",
                       "type": "block",
                       "content": {
-                        "mod": "changes"
+                        "mod": "reviewer"
                       }
                     }
                   ]

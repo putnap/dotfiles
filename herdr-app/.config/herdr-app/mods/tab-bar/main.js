@@ -1,11 +1,12 @@
 // Herdr's tab bar (mods/tabs) as a terminal's: flat tabs split by rules, the one shown underlined,
 // the first flush against the sidebar (the bar keeps clear of the window buttons only without it),
-// faintly tinted the shown space's colour to tell projects apart,
+// faintly tinted the shown space's colour to tell projects apart, a working tab spinning as the
+// sidebar does,
 // each with its program's icon and, as herdr's own tabs, the agent's session title when nobody
 // named it. Everything else (moving, renaming, the side panels) is the shipped bar's.
 import { View, div, svg, image } from "gpui-kit";
 import { h_flex } from "gpui-base";
-import { spaces, panes, run, openOverlay, theme, window, shared, layout, settings } from "herdr";
+import { spaces, panes, run, openOverlay, theme, window, shared, layout, settings, keys } from "herdr";
 
 function find(node, id) {
   if (node?.id === id) return node;
@@ -55,7 +56,7 @@ export default class TabBar extends View {
     const space = spaces().find(p => p.active);
     const shown = space?.tabs ?? [];
     const stop = (_e, cx) => cx.stop_propagation();
-    const button = (id, label, action) => div().id(id).size(26).flex_none().flex().items_center().justify_center().text_color(t.dim).hover(s => s.bg(t.hover).text_color(t.foreground))
+    const button = (id, label, action, tip = "") => div().id(id).when(tip !== "", el => el.tooltip(tip)).size(26).flex_none().flex().items_center().justify_center().text_color(t.dim).hover(s => s.bg(t.hover).text_color(t.foreground))
       .on_mouse_down("left", stop).on_click(action).child(label);
     const item = (c, i) => {
       const agentPane = panes().find(p => p.tab === c.id && p.program?.agent);
@@ -75,9 +76,10 @@ export default class TabBar extends View {
         .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); openOverlay({ mod: "menu", kind: "popup", width: 200, props: { tab: "tab", target: { id: c.id, space: space.id } } }); })
         .when(Boolean(program?.icon), el => el.child(program.tint ? svg(program.icon).size(14).text_color(t.muted) : image(program.icon).size(14)))
         .when(name !== "" || c.zoomed, el => el.child(div().max_w(220).truncate().child(c.zoomed ? `${name} Z`.trim() : name)))
-        .when(c.status === "working", el => el.child(svg("mods/workspace-chrome/spinner.svg").size(12).flex_none().text_color(t.working).spin(900)))
-        .when(c.status === "blocked" || c.status === "done", el => el.child(div().size(6).rounded(3).bg(t[c.status])))
-        .when(c.active, el => el.child(div().id(`close-${c.id}`).text_color(t.dim).on_mouse_down("left", stop).on_click((_e, cx) => { cx.stop_propagation(); run("tab.close", { id: c.id }); }).child(svg("mods/pane/close.svg").size(12))));
+        .when(c.status === "working", el => el.child(div().flex_none().text_size(10).text_color(t.working).frames(SPINNER_FRAMES, 140)))
+        .when(c.status === "blocked", el => el.child(div().flex_none().text_size(10).text_color(t.blocked).frames(QUESTION_FRAMES, 350)))
+        .when(c.status === "done", el => el.child(div().size(6).rounded(3).bg(t.done)))
+        .when(c.active, el => el.child(div().id(`close-${c.id}`).tooltip(withKey("Close tab", "tab.close")).text_color(t.dim).on_mouse_down("left", stop).on_click((_e, cx) => { cx.stop_propagation(); run("tab.close", { id: c.id }); }).child(svg("mods/pane/close.svg").size(12))));
     };
     const root = layout(), sidebar = find(root, "sidebar"), w = window();
     // Old saved rails and a dragged-narrow sidebar can be smaller than the window buttons.
@@ -101,7 +103,7 @@ export default class TabBar extends View {
       .on_mouse_up("left", () => { this.pressed = null; })
       .on_scroll_wheel(e => { if (Math.abs(e.delta.y) >= 1) run(e.delta.y > 0 ? "tab.prev" : "tab.next"); })
       .child(h_flex().id("tab-scroll").flex_1().min_w(0).h_full().items_center().overflow_x_scrollbar().children(shown.map(item)))
-      .child(button("tab-new", "+", () => openOverlay({ mod: "new-menu", kind: "popup", width: 250, height: 512 })))
+      .child(button("tab-new", "+", () => openOverlay({ mod: "new-menu", kind: "popup", width: 250, height: 512 }), withKey("New tab, agent or space", "tab.new")))
       .when(enabled.includes("files"), el => el.child(panelButton("files", "Files", "mods/files/file.svg")))
       .when(enabled.includes("changes"), el => el.child(panelButton("changes", "Changes", "mods/changes/changes.svg")))
       .when(w?.buttons, el => el.child(button("minimize", w.platform === "windows" ? svg("mods/tabs/win-min.svg").size(16) : "−", () => run("window.minimize")))
@@ -124,4 +126,21 @@ const TINT_ALPHA = "0d";
 function projectTint(t, space) {
   const color = shared("tree.space-colors")?.[space?.id];
   return /^#[0-9a-f]{6}$/i.test(color ?? "") ? `${color}${TINT_ALPHA}` : t.chrome;
+}
+
+// The tree sidebar's flat braille spinner and question (mods/tree), so an agent working or
+// waiting for you looks alike in both.
+const SPINNER_FRAMES = ["⣤⣀⣀", "⣀⣤⣀", "⣀⣀⣤", "⣀⣤⣀"];
+const QUESTION_FRAMES = ["⣀⠦⣀", "⣀⠦⣀", "⣀⠦⣀", "⣀⣀⣀"];
+
+// A label with its shortcut as bound now (keys.json), e.g. "Settings  ⌘,"; herdr's old status bar
+// read the palette key the same way. Mods can't share files, so the tree, tab bar and top row each
+// keep a copy.
+const KEY_GLYPHS = { cmd: "⌘", ctrl: "⌃", shift: "⇧", alt: "⌥", option: "⌥" };
+
+function withKey(label, action) {
+  const bound = keys().find((k) => k.action === action);
+  if (!bound) return label;
+  const parts = bound.keys.endsWith("--") ? [...bound.keys.slice(0, -2).split("-"), "-"] : bound.keys.split("-");
+  return `${label}  ${parts.map((p) => KEY_GLYPHS[p] ?? p.toUpperCase()).join("")}`;
 }
