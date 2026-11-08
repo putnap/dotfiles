@@ -4,6 +4,8 @@
 -- plugin in this repo (herdr/.config/herdr/local-plugins/smart-splits).
 return {
     "mrjones2014/smart-splits.nvim",
+    -- v3 moved tmux/herdr support into separate backend plugins; keep v2 until they mature.
+    tag = "v2.1.1-final",
     -- Not lazy: the tmux integration needs @pane-is-vim set as soon as nvim starts.
     lazy = false,
     opts = {
