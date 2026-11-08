@@ -9,7 +9,7 @@ min_herdr_version = "0.7.0"
 description = "tms-style workspace picker: open herdr workspaces plus every git repo under the configured roots"
 platforms = ["macos", "linux"]
 
-# Actions have no tty, so they hand off to an overlay pane, which does.
+# Actions have no tty, so they hand off to a popup pane, which does.
 [[actions]]
 id = "open"
 title = "Workspace picker"
@@ -19,5 +19,7 @@ command = ["bash", "scripts/open-overlay.sh"]
 [[panes]]
 id = "picker"
 title = "Workspaces"
-placement = "overlay"
+placement = "popup"
+width = "70%"
+height = "60%"
 command = ["bash", "-c", "exec \"$HERDR_PLUGIN_ROOT/scripts/picker.sh\""]
