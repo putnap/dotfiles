@@ -202,6 +202,14 @@ for plugin in "$repo"/herdr/.config/herdr/local-plugins/*; do
   echo "register herdr plugin $id"
   if [[ $apply == true && $home == "$real_home" ]]; then save "$registry"; herdr plugin link "$plugin"; fi
 done
+# GitHub plugins clone and build over the network, so they install with the integrations.
+if [[ $integrations == true ]]; then
+  while IFS= read -r source; do
+    if jq -e --arg source "$source" 'any(.[]; .source.kind == "github" and "\(.source.owner)/\(.source.repo)" == $source)' "$scratch/registry" >/dev/null; then continue; fi
+    echo "install herdr plugin $source"
+    if [[ $apply == true ]]; then save "$registry"; herdr plugin install "$source" --yes; fi
+  done < <(dasel -i toml -o json < "$repo/herdr/.config/herdr/plugins/config/agents/config.toml" | jq -r '.plugins[]')
+fi
 write "$state" "$scratch/owned"
 if [[ $apply == true && $home == "$real_home" ]] && herdr status --json | jq -e '.server.running' >/dev/null; then
   herdr server reload-config

@@ -1,0 +1,2 @@
+# Ovis shows the Herdr desktop app's terminals (herdr-core, hc) instead of herdr's TUI server.
+OVIS_RUNTIME=herdr-core

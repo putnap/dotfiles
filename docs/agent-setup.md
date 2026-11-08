@@ -38,7 +38,7 @@ Once active work is finished, run `herdr server stop`, then reopen `herdr` to us
 the new binary. Stopping a server terminates its pane processes; the declared
 restore settings preserve sessions. Setup never stops the server for you.
 
-`install.sh` runs this same setup before the other Stow packages. The flake declares Stow, jq, dasel 3+, fzf and herdr; peon-ping is declared through its Homebrew integration. Apply the flake first. Scripts use Bash and macOS utilities, with no language-package installation or downloads during setup.
+`install.sh` runs this same setup before the other Stow packages. The flake declares Stow, jq, dasel 3+, fzf and herdr; peon-ping is declared through its Homebrew integration. Apply the flake first. Scripts use Bash and macOS utilities. The one download is a declared GitHub herdr plugin that is not installed yet: `herdr plugin install` clones and builds it, and a failed build fails activation.
 
 All owned configuration sources use TOML, including Claude's keybindings and theme. Dasel converts TOML to native JSON where Claude or Peon requires it, and converts Codex's merged settings back to TOML. Generated backup manifests and runtime state use JSON; they are not configuration declarations. Existing `jq` resolved to Apple's signed `/usr/bin/jq`; the explicit flake entry makes it a declared Nix dependency on fresh machines.
 
@@ -58,7 +58,7 @@ Rollback restores owned files and the plugin registry; reload herdr afterward. I
 | --- | --- |
 | Shared working agreement | `agents/.agents/AGENTS.md` |
 | Portable skills | `agents/.agents/skills/` |
-| Default agent and declared herdr integrations | `herdr/.config/herdr/plugins/config/agents/config.toml` |
+| Default agent, declared herdr integrations and GitHub plugins | `herdr/.config/herdr/plugins/config/agents/config.toml` |
 | Claude preferences | `agents/.config/agent-setup/claude.toml` |
 | Codex preferences | `agents/.config/agent-setup/codex.toml` |
 | Atuin shell-history hooks for both agents | `agents/.config/agent-setup/atuin-hooks.json` |

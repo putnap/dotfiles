@@ -1,3 +1,5 @@
 # Preferences owned by the local agents plugin, not built-in herdr settings.
 default_agent = "claude"
 integrations = ["claude", "codex"]
+# GitHub plugins apply.sh installs when missing; herdr's own update keeps them current.
+plugins = ["devswha/ovis", "kryptamine/herdr-auto-title"]

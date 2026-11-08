@@ -77,6 +77,7 @@
                 gh-dash
                 atuinPinned
                 herdr
+                bun # Ovis's herdr plugin builds and runs on it
                 cloudflared
                 codex
                 clauthPackage
@@ -159,6 +160,9 @@
             StandardErrorPath = "/Users/${user}/Library/Logs/clauth-daemon.error.log";
           };
         };
+
+        # Puts Ovis on the phone over the tailnet; the daemon also gives `tailscale` on PATH.
+        services.tailscale.enable = true;
 
         fonts.packages = with pkgs;
           [

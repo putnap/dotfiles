@@ -94,3 +94,22 @@ export HERDR_PLUGIN_CONTEXT_JSON='{"focused_pane_cwd":"/tmp/a path","focused_pan
 bash "$repo/agents/.config/agent-setup/control.sh" launch split
 grep -q -- '--entrypoint claude --placement split --focus --cwd /tmp/a path --target-pane p1 --direction right' "$TEST_CALLS"
 echo 'Launcher tests passed: configured provider, cwd, exact forks, invalid identity creates no pane.'
+# Declared GitHub plugins, through a fake herdr in a home that counts as the real one.
+plugin_home=$scratch/plugin-home
+mkdir -p "$plugin_home/.config/herdr" "$scratch/bin"
+printf '{"mcpServers":{"atuin":{}}}\n' > "$plugin_home/.claude.json"
+printf '[{"plugin_id":"devswha.ovis","source":{"kind":"github","owner":"devswha","repo":"ovis"}}]\n' > "$plugin_home/.config/herdr/plugins.json"
+cat > "$scratch/bin/herdr" <<'MOCK'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >> "$TEST_CALLS"
+case "$1" in
+  status) printf '{"server":{"running":false}}\n';;
+  integration) printf 'claude: installed\ncodex: installed\n';;
+esac
+MOCK
+chmod +x "$scratch/bin/herdr"
+: > "$TEST_CALLS"
+HOME=$plugin_home PATH=$scratch/bin:$PATH bash "$repo/agents/.config/agent-setup/apply.sh" --repo "$repo" --home "$plugin_home" --apply --integrations >/dev/null
+grep -qx 'plugin install kryptamine/herdr-auto-title --yes' "$TEST_CALLS"
+if grep -q 'plugin install devswha/ovis' "$TEST_CALLS"; then echo 'installed plugin reinstalled' >&2; exit 1; fi
+echo 'Plugin tests passed: missing GitHub plugins install, installed ones are skipped.'
