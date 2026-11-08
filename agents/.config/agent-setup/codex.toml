@@ -26,3 +26,8 @@ open_external_editor = "ctrl-g"
 
 [tui.keymap.composer]
 submit = ["enter"]
+
+# The system profile's atuin, not a store path, so upgrades keep it working.
+[mcp_servers.atuin]
+command = "/run/current-system/sw/bin/atuin"
+args = ["mcp"]

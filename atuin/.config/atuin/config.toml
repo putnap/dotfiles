@@ -7,3 +7,13 @@ name = "catppuccin-mocha-mauve"
 
 [sync]
 records = true
+
+[ai]
+enabled = true
+
+# The flake's launchd agent runs the daemon, so atuin must not install its own.
+[daemon]
+enabled = true
+
+[threads]
+capture = true

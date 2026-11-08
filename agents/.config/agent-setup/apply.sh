@@ -127,11 +127,13 @@ for agent in claude codex; do
   elif [[ -f $live ]]; then cp "$live" "$scratch/hook-source"
   else printf '{}\n' > "$scratch/hook-source"; fi
   # Replace only our hook commands; other integrations retain their ordering.
-  jq --arg agent "$agent" --slurpfile wanted "$config/workmux-hooks.json" '
+  # One pass for both files: Codex trusts a hook by its position, so ours must not swap places.
+  jq --arg agent "$agent" --slurpfile workmux "$config/workmux-hooks.json" --slurpfile atuin "$config/atuin-hooks.json" '
+    def ours: (.command // "") | contains("~/.config/agent-setup/workmux-hook.sh") or contains("atuin hook ");
     .hooks = ((.hooks // {}) | with_entries(.value |= map(
-      .hooks |= map(select(((.command // "") | contains("~/.config/agent-setup/workmux-hook.sh")) | not)) |
+      .hooks |= map(select(ours | not)) |
       select(.hooks | length > 0)))) |
-    reduce ($wanted[0][$agent].hooks | to_entries[]) as $event (. ;
+    reduce (($workmux[0], $atuin[0])[$agent].hooks | to_entries[]) as $event (. ;
       .hooks[$event.key] = ((.hooks[$event.key] // []) + $event.value))
   ' "$scratch/hook-source" > "$source"
 done
@@ -177,6 +179,14 @@ if [[ $integrations == true ]]; then
       herdr integration install "$agent"
     fi
   done < <(dasel -i toml -o json < "$repo/herdr/.config/herdr/plugins/config/agents/config.toml" | jq -r '.integrations[]')
+  # Claude keeps user MCP servers in ~/.claude.json, which it rewrites constantly, so add once.
+  if ! jq -e '.mcpServers.atuin' "$home/.claude.json" >/dev/null 2>&1; then
+    echo "add Claude MCP server atuin"
+    if [[ $apply == true ]]; then
+      save "$home/.claude.json"
+      claude mcp add --scope user atuin -- /run/current-system/sw/bin/atuin mcp
+    fi
+  fi
 fi
 registry=$home/.config/herdr/plugins.json
 [[ ! -f $registry ]] || cp "$registry" "$scratch/registry"

@@ -61,6 +61,7 @@ Rollback restores owned files and the plugin registry; reload herdr afterward. I
 | Default agent and declared herdr integrations | `herdr/.config/herdr/plugins/config/agents/config.toml` |
 | Claude preferences | `agents/.config/agent-setup/claude.toml` |
 | Codex preferences | `agents/.config/agent-setup/codex.toml` |
+| Atuin shell-history hooks for both agents | `agents/.config/agent-setup/atuin-hooks.json` |
 | Peon event-delivery preferences | `agents/.config/agent-setup/peon.toml` |
 | Claude keybindings and theme | `agents/.config/agent-setup/claude-{keybindings,theme}.toml` |
 | Claude statusline and output style | `claude/.claude/` |

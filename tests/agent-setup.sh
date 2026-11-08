@@ -28,6 +28,13 @@ dasel -i toml -o json < "$home/.codex/config.toml" | jq -e '.tui.status_line == 
 [[ $home/.claude/CLAUDE.md -ef $repo/agents/.agents/AGENTS.md ]]
 [[ -L $home/.claude/skills/wizard ]]
 bash "$repo/agents/.config/agent-setup/apply.sh" --repo "$repo" --home "$home" --apply > "$scratch/second"
+# Codex trusts hooks by position, so workmux and atuin keep their places across applies.
+for agent in claude codex; do
+  file=$home/.$agent/hooks.json
+  [[ $agent != claude ]] || file=$home/.claude/settings.json
+  jq -e '[.hooks.PostToolUse[].hooks[].command] | length == 2 and (.[0] | contains("workmux-hook.sh")) and (.[1] | contains("atuin hook"))' "$file" >/dev/null
+done
+dasel -i toml -o json < "$home/.codex/config.toml" | jq -e '.mcp_servers.atuin.args == ["mcp"]' >/dev/null
 [[ $(find "$home/.local/state/agent-setup/backups" -name manifest.json | wc -l | tr -d ' ') == 1 ]]
 manifest=$(find "$home/.local/state/agent-setup/backups" -name manifest.json)
 bash "$repo/agents/.config/agent-setup/apply.sh" --rollback "$manifest" >/dev/null

@@ -10,16 +10,24 @@
     # `nix flake update` refetches latest, so nixr still upgrades it.
     clauth.url = "file+https://github.com/uwuclxdy/clauth/releases/latest/download/clauth-macos-aarch64";
     clauth.flake = false;
+    # The last nixpkgs Hydra built atuin (18.24.2) from: 18.24.4's e2e tests fail on Hydra and here.
+    nixpkgs-atuin.url = "github:NixOS/nixpkgs/f4b794aaffc0e3d45da81088d492b118224bb476";
     # home-manager.url = "github:nix-community/home-manager";
   };
 
-  outputs = inputs@{ self, nix-darwin, nixpkgs, nix-homebrew, home-manager, clauth }:
+  outputs = inputs@{ self, nix-darwin, nixpkgs, nix-homebrew, home-manager, nixpkgs-atuin, clauth }:
     let
       system = "aarch64-darwin";
       user = "papu";
       clauthPackage = nixpkgs.legacyPackages.${system}.runCommand "clauth" {} ''
         install -Dm755 ${clauth} $out/bin/clauth
       '';
+      # Rebuilds fail once nixpkgs' atuin moves past this; if Hydra built the new one
+      # (hydra.nixos.org/job/nixpkgs/unstable/atuin.aarch64-darwin) unpin, else bump this.
+      atuinBroken = "18.24.4";
+      atuinPinned = nixpkgs.lib.throwIf (nixpkgs.legacyPackages.${system}.atuin.version != atuinBroken)
+        "nixpkgs has atuin ${nixpkgs.legacyPackages.${system}.atuin.version}: unpin it in flake.nix, or set atuinBroken to that to keep the pin"
+        nixpkgs-atuin.legacyPackages.${system}.atuin;
       configuration = { pkgs, config, ... }: {
 
         system.primaryUser = user;
@@ -65,8 +73,7 @@
                 posting
                 gh
                 gh-dash
-                opencode
-                atuin
+                atuinPinned
                 herdr
                 cloudflared
                 codex
@@ -119,20 +126,19 @@
             '';
           };
 
-        # A store path here would change on every rebuild, and nix-darwin reloads an
-        # agent whose plist differs, dropping the daemon and its Codex sessions.
-        launchd.user.agents.codex-remote = {
-          command = "/run/current-system/sw/bin/codex app-server --remote-control --listen unix://";
+        # Atuin's thread capture runs in its daemon. The profile path, not a store path,
+        # keeps the plist unchanged across rebuilds, so nix-darwin doesn't restart it each time.
+        launchd.user.agents.atuin-daemon = {
+          command = "/run/current-system/sw/bin/atuin daemon start";
           environment = {
             HOME = "/Users/${user}";
-            CODEX_HOME = "/Users/${user}/.codex";
             PATH = "/run/current-system/sw/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin";
           };
           serviceConfig = {
             RunAtLoad = true;
             KeepAlive = true;
-            StandardOutPath = "/Users/${user}/Library/Logs/codex-remote.log";
-            StandardErrorPath = "/Users/${user}/Library/Logs/codex-remote.error.log";
+            StandardOutPath = "/Users/${user}/Library/Logs/atuin-daemon.log";
+            StandardErrorPath = "/Users/${user}/Library/Logs/atuin-daemon.error.log";
           };
         };
 
