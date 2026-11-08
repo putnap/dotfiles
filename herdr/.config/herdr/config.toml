@@ -189,6 +189,12 @@ type = "plugin_action"
 command = "smart-splits.nav-up"
 description = "navigate up (nvim/herdr)"
 
+[[keys.command]]
+key = "ctrl+l"
+type = "plugin_action"
+command = "smart-splits.nav-right"
+description = "navigate right (nvim/herdr)"
+
 # tmux's prefix+m marks a pane; here it pins the focused agent to the top of the inbox.
 [[keys.command]]
 key = "prefix+m"
@@ -239,12 +245,6 @@ key = "prefix+}"
 type = "plugin_action"
 command = "smart-splits.swap-next"
 description = "swap with the next pane (tmux)"
-
-[[keys.command]]
-key = "ctrl+l"
-type = "plugin_action"
-command = "smart-splits.nav-right"
-description = "navigate right (nvim/herdr)"
 
 [[keys.command]]
 key = "ctrl+shift+left"
