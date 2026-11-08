@@ -184,9 +184,17 @@
             "raine/workmux/workmux"
             "hashicorp/tap/terraform"
           ];
-          taps = [
+          # Homebrew 6 loads non-official taps only when trusted; nix-darwin marks each one
+          # trusted in the Brewfile, including the taps brews above come from.
+          taps = map (name: { inherit name; trusted = true; }) [
             "FelixKratz/formulae"
             "nikitabobko/tap"
+            "PeonPing/tap"
+            "tnk-studio/tools"
+            "modem-dev/tap"
+            "bjarneo/cliamp"
+            "raine/workmux"
+            "hashicorp/tap"
           ];
           casks = [
             "android-studio"
@@ -213,13 +221,9 @@
             "Windows App" = 1295203466;
           };
           onActivation.cleanup = "zap";
-          onActivation.autoUpdate = false;
+          # Refreshes the taps first, so upgrade sees their new releases (hunk sat on 0.17).
+          onActivation.autoUpdate = true;
           onActivation.upgrade = true;
-          # Homebrew 6.0 (June 2026) requires explicit trust for non-official taps.
-          # nix-darwin's module can't yet emit per-tap `trusted: true`, so restore the
-          # pre-6.0 behavior during activation. NOTE: transition flag, slated for removal
-          # upstream — revisit once nix-darwin supports declaring tap trust.
-          onActivation.extraEnv.HOMEBREW_NO_REQUIRE_TAP_TRUST = "1";
         };
 
         system.activationScripts.applications.text =
