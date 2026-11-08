@@ -1,49 +1,56 @@
 # Worktree flow. herdr already creates worktree-backed workspaces and groups them
-# in the sidebar; this adds prompts that follow the repo's own conventions, an
-# adopt-existing picker that works from inside a worktree, and the nvim-left
-# layout applied however the worktree arrived.
+# in the sidebar; this adds prompts that follow the repo's own conventions, a new
+# worktree's session as its space's one pane, its own space for an agent started in a
+# worktree's folder from anywhere else, and its removal, with its branches, on closing it.
 id = "worktree"
 name = "Worktree flow"
 version = "0.1.0"
 min_herdr_version = "0.7.0"
-description = "Prompted git worktree creation, adoption of agent-made worktrees, and an nvim-left layout"
+description = "Prompted git worktree creation with a session, adoption of agent-made worktrees, and cleanup on close"
 platforms = ["macos", "linux"]
 
 # Actions are run by the server WITHOUT a tty, so they cannot prompt or run fzf
-# themselves. They open the overlay panes below, which are normal panes with a
-# real pty. (A `popup` is not enough: its stdout is not a tty, so fzf draws
-# nothing and hangs.) Same pattern as jt.command-palette and herdr-fzf-url.
+# themselves. They open the pane below, which has a real pty.
 [[actions]]
 id = "new"
 title = "New git worktree"
 contexts = ["workspace"]
-command = ["bash", "scripts/open-overlay.sh", "new"]
-
-[[actions]]
-id = "open"
-title = "Open an existing git worktree"
-contexts = ["workspace"]
-command = ["bash", "scripts/open-overlay.sh", "open"]
+command = ["bash", "scripts/open-overlay.sh"]
 
 [[panes]]
 id = "new"
 title = "New worktree"
-placement = "overlay"
+placement = "popup"
+width = "70%"
+height = "60%"
 command = ["bash", "-c", "exec \"$HERDR_PLUGIN_ROOT/scripts/new-worktree.sh\""]
 
+# prefix+x: a pane closes at once, a space's last one through the close dialog, which in a
+# worktree's space can also remove the worktree and its branches.
+[[actions]]
+id = "close"
+title = "Close the pane, offering a worktree's cleanup with its space's last"
+contexts = ["global"]
+command = ["bash", "scripts/close-pane.sh"]
+
 [[panes]]
-id = "open"
-title = "Open worktree"
-placement = "overlay"
-command = ["bash", "-c", "exec \"$HERDR_PLUGIN_ROOT/scripts/open-worktree.sh\""]
+id = "close"
+title = "Close"
+placement = "popup"
+width = "70%"
+height = 12
+command = ["bash", "-c", "exec \"$HERDR_PLUGIN_ROOT/scripts/close-space.sh\""]
 
 # Fires for the keybinding, `herdr worktree create`, and the built-in dialog alike.
 [[events]]
 on = "worktree.created"
 command = ["bash", "scripts/layout.sh"]
 
-# Adopting a checkout an agent made outside herdr should land in the same layout.
-# layout.sh skips workspaces already in use.
+# An agent started in a worktree's folder from another space moves into that worktree's
+# own space; at startup, any such agent already running does.
 [[events]]
-on = "worktree.opened"
-command = ["bash", "scripts/layout.sh"]
+on = "pane.agent_detected"
+command = ["bash", "scripts/adopt-agents.sh"]
+
+[[startup]]
+command = ["bash", "scripts/adopt-agents.sh"]

@@ -36,21 +36,11 @@ detach = "prefix+d"
 
 # prefix+o and prefix+s go to the tmux meanings above, so herdr's own actions move.
 # open_notification_target only fires while an in-app toast is visible, and
-# ui.toast.delivery = "off" means there never is one; attention.jump below
-# is the keyboard equivalent that actually works.
+# ui.toast.delivery = "off" means there never is one.
 open_notification_target = "prefix+shift+o"
 settings = "prefix+ctrl+s"
-# Agents create worktrees with plain `git worktree add`, so herdr never opens
-# them. open_worktree lists every checkout git knows about, opened or not --
-# that is how an agent's worktree gets adopted (and picks up the layout hook).
-# Built-in open_worktree is only offered on a parent Git workspace row, so it
-# does nothing from inside a worktree. worktree.open below works from either.
-open_worktree = ""
-# Not prefix+ctrl+shift+g: that is one shift key from open_worktree above, too
-# close for something that deletes a checkout. herdr confirms either way.
-remove_worktree = "prefix+alt+g"
-# Superseded by the prompted popup below, which also asks for base and path.
-new_worktree = ""
+# Deletes a checkout, so herdr confirms before it does.
+remove_worktree = "prefix+ctrl+x"
 
 # tmux windows -> herdr tabs. alt+shift+h/l were dropped: Aerospace binds them
 # globally and always won. ctrl+tab was tried and never arrives either -- the
@@ -108,19 +98,21 @@ type = "plugin_action"
 command = "sessionizer.open"
 description = "workspace picker"
 
+# Closes a pane; a space's last asks first, and in a worktree's space can also remove the
+# worktree with its local and remote branches.
+[[keys.command]]
+key = "prefix+x"
+type = "plugin_action"
+command = "worktree.close"
+description = "close the pane (a worktree's last: clean up)"
+
 # Worktrees. Our popup also asks for a base ref; herdr's built-in dialog asks
 # only for a branch, so it keeps a key of its own rather than being shadowed.
 [[keys.command]]
-key = "prefix+shift+g"
+key = "prefix+ctrl+g"
 type = "plugin_action"
 command = "worktree.new"
 description = "new git worktree (prompted)"
-
-[[keys.command]]
-key = "prefix+ctrl+g"
-type = "plugin_action"
-command = "worktree.open"
-description = "open an existing git worktree"
 
 # ctrl+shift+= gives this pane its own tab -- the same chord and the same idea
 # as Zen's unsplit, which gives a tab back its own window. \ and - divide,
