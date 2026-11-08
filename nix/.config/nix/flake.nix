@@ -52,6 +52,7 @@
                 dasel # TOML/JSON conversion for declarative agent settings
                 lazygit
                 lazydocker
+                rainfrog # Postgres TUI
                 delta
                 yazi
                 glow
@@ -59,6 +60,7 @@
                 ripgrep
                 imagemagick
                 neovim
+                statix # nix linter LazyVim's nix extra runs via nvim-lint
                 tmux
                 tmux-sessionizer
                 oh-my-posh
@@ -201,8 +203,10 @@
             "sublime-text"
             "postman"
             "visual-studio-code"
+            "vorssaint"
             "docker-desktop"
             "transmission"
+            "claude"
           ];
           masApps = {
             "WhatsApp" = 310633997;
