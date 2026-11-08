@@ -5,7 +5,7 @@ id = "smart-splits"
 name = "smart-splits"
 version = "0.1.0"
 min_herdr_version = "0.7.0"
-description = "Ctrl+hjkl navigation and ctrl+arrow resize across herdr panes and Vim/Neovim splits"
+description = "Ctrl+hjkl navigation and ctrl+arrow resize across herdr panes and Vim/Neovim splits, and tmux-style pane swaps"
 platforms = ["macos", "linux"]
 
 [[actions]]
@@ -55,3 +55,16 @@ id = "resize-right"
 title = "Resize right (Vim/herdr)"
 contexts = ["global"]
 command = ["bash", "scripts/smart-splits.sh", "resize", "right"]
+
+# prefix+{ and prefix+}: the previous or next pane in layout order, as tmux swaps them.
+[[actions]]
+id = "swap-previous"
+title = "Swap with the previous pane"
+contexts = ["global"]
+command = ["bash", "scripts/swap.sh", "previous"]
+
+[[actions]]
+id = "swap-next"
+title = "Swap with the next pane"
+contexts = ["global"]
+command = ["bash", "scripts/swap.sh", "next"]

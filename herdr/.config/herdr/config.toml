@@ -23,8 +23,10 @@ resize_mode = "prefix+ctrl+r"
 rename_tab = ["prefix+shift+t", "prefix+,"]
 rename_workspace = ["prefix+shift+w", "prefix+$"]
 close_tab = ["prefix+shift+x", "prefix+&"]
-swap_pane_up = ["prefix+shift+k", "prefix+{"]
-swap_pane_down = ["prefix+shift+j", "prefix+}"]
+# prefix+{ and prefix+} are tmux's order-based swaps, in smart-splits below; herdr's swaps are
+# directional, so side-by-side panes never swapped up or down.
+swap_pane_up = "prefix+shift+k"
+swap_pane_down = "prefix+shift+j"
 last_pane = "prefix+;"
 cycle_pane_next = ["prefix+tab", "prefix+o"]
 
