@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Install zen-keyboard-shortcuts.json into the live Zen profile.
+# Install customKeys.json, the shortcut overrides set in about:keyboard, into
+# the live Zen profile.
 #
 # Zen rewrites this file wholesale whenever a shortcut is changed in its UI, so
 # it is copied rather than symlinked -- a link would be replaced by a regular
@@ -8,10 +9,10 @@
 set -euo pipefail
 
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-repo="$here/zen-keyboard-shortcuts.json"
+repo="$here/customKeys.json"
 profile=$(ls -d ~/Library/Application\ Support/zen/Profiles/*release*/ 2>/dev/null | head -1)
 [ -n "$profile" ] || { echo "no Zen release profile found" >&2; exit 1; }
-live="${profile}zen-keyboard-shortcuts.json"
+live="${profile}customKeys.json"
 
 # Zen holds this file open and flushes its own copy on exit, which would
 # silently discard whatever we wrote.
