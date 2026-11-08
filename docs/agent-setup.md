@@ -70,7 +70,7 @@ Settings fragments are merged; unrelated live settings survive. Removing a previ
 
 Codex uses `on-request` approvals with `auto_review`, a `workspace-write` sandbox and `sandbox_workspace_write.network_access = false`. Eligible escalations go to an automatic reviewer; a rejection can still interrupt unattended work. This does not grant full access or blanket approval for Python or shell scripts. Existing trust records and additional writable roots remain local and unchanged. These settings take effect after applying the fragment and starting a new Codex session; managed policies or launch overrides can take precedence.
 
-The default agent is Codex for this trial. Claude's pane entrypoint retains `--dangerously-skip-permissions`. Codex receives no translated bypass option. Claude forks retain the existing transcript-based permission-mode lookup.
+The default agent is Claude, started as plain `claude`. Codex receives no translated bypass option. Claude forks retain the existing transcript-based permission-mode lookup.
 
 ## Controls
 

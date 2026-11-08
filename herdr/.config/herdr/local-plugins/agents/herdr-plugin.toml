@@ -43,7 +43,7 @@ command = ["bash", "scripts/open-agent.sh", "split"]
 id = "claude"
 title = "claude"
 placement = "tab"
-command = ["claude", "--dangerously-skip-permissions"]
+command = ["claude"]
 
 [[panes]]
 id = "codex"

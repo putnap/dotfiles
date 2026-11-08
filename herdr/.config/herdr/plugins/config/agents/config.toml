@@ -1,3 +1,3 @@
 # Preferences owned by the local agents plugin, not built-in herdr settings.
-default_agent = "codex"
+default_agent = "claude"
 integrations = ["claude", "codex"]

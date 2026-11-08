@@ -92,5 +92,5 @@ TEST_PROVIDER=claude TEST_INVALID=true bash "$repo/agents/.config/agent-setup/co
 export HERDR_PLUGIN_CONFIG_DIR=$repo/herdr/.config/herdr/plugins/config/agents
 export HERDR_PLUGIN_CONTEXT_JSON='{"focused_pane_cwd":"/tmp/a path","focused_pane_id":"p1"}'
 bash "$repo/agents/.config/agent-setup/control.sh" launch split
-grep -q -- '--entrypoint codex --placement split --focus --cwd /tmp/a path --target-pane p1 --direction right' "$TEST_CALLS"
+grep -q -- '--entrypoint claude --placement split --focus --cwd /tmp/a path --target-pane p1 --direction right' "$TEST_CALLS"
 echo 'Launcher tests passed: configured provider, cwd, exact forks, invalid identity creates no pane.'
