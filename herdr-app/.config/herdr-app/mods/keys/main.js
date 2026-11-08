@@ -64,7 +64,8 @@ const PREFIX = {
   t: ["past agent sessions", () => run("mod.open", { name: "atuin-threads" })],
   h: ["GitHub dashboard", () => popup(["gh-dash"])],
   "ctrl-g": ["new worktree", () => worktree("new", 460, 280)],
-  "alt-g": ["remove worktree", () => worktree("remove", 440, 260)],
+  G: ["open worktree", () => worktree("open", 560, 480)],
+  "ctrl-x": ["remove worktree", () => worktree("remove", 440, 260)],
   m: ["pin the agent", () => pinAgent()],
   f: ["fork the agent into a pane", () => forkAgent("right")],
   F: ["fork the agent into a tab", () => forkAgent("tab")],
@@ -192,9 +193,10 @@ async function popup(argv) {
   run("pane.focus", { terminal: address });
 }
 
+// git-worktree is Herdr's worktree mod cloned to put checkouts where herdr's own flow does.
 function worktree(action, width, height) {
   const here = focused();
-  openOverlay({ mod: "worktree", kind: "dialog", width, height, props: { space: here?.space, folder: here?.cwd, action } });
+  openOverlay({ mod: "git-worktree", kind: "dialog", width, height, props: { space: here?.space, folder: here?.cwd, action } });
 }
 
 // herdr's agent fork (agents/.config/agent-setup/control.sh fork): the focused Claude session
