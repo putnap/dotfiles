@@ -55,7 +55,12 @@ report "$first" idle 102
 report "$second" idle 102
 report "$first" blocked 103
 report "$first" blocked 103
-sleep 3
+# Notification hooks serialize playback; wait for completion rather than CPU-dependent timing.
+for ((i=0;i<300;i++)); do
+  if rpc plugin.log.list '{"plugin_id":"peon","limit":10}' |
+     jq -e '(.logs | length) >= 5 and all(.logs[]; .status == "succeeded")' >/dev/null; then break; fi
+  sleep 0.1
+done
 for name in peon-play notify.sh; do
   count=$(wc -l < "$CLAUDE_PEON_DIR/$name.calls" | tr -d ' ')
   echo "$name calls: $count"
