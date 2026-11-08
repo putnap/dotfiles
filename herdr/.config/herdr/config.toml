@@ -58,27 +58,20 @@ new_worktree = ""
 previous_tab = ["prefix+p", "shift+left"]
 next_tab = ["prefix+n", "shift+right"]
 
-# prefix+x is also tmux's kill-pane. The direct chord is for closing repeatedly;
-# ctrl+w stays delete-word, which zsh, Claude Code and lazygit all rely on.
-close_pane = ["prefix+x", "ctrl+shift+w"]
+# prefix+x, tmux's kill-pane, is the worktree plugin's close below. The direct chord is for
+# closing repeatedly; ctrl+w stays delete-word, which zsh, Claude Code and lazygit all rely on.
+close_pane = "ctrl+shift+w"
+toggle_sidebar = "ctrl+shift+d"
 
 # Shift+arrows are the tmux window-switching muscle memory. Horizontal keeps
-# meaning "tab" (they sit in a horizontal bar); vertical means "workspace"
-# (they stack vertically in the sidebar).
-previous_workspace = "shift+up"
-next_workspace = "shift+down"
+# meaning "tab" (they sit in a horizontal bar); vertical walks the sidebar's
+# tree, every agent and each space or worktree without one, then the inbox
+# (sidebar.next and sidebar.previous in [[keys.command]] below).
 
-# Direct jumps, mirroring prefix+1..9 for tabs.
-switch_workspace = "prefix+shift+1..9"
-focus_agent = "prefix+alt+1..9"
-
-# Walk the agent panel; with agent_panel_sort = "spaces" this follows sidebar
-# order. prefix+shift+a goes to the attention jump below instead, which is the
-# one you actually reach for.
-# j/k walk the agent panel the way they walk anything vertical. prefix+a is
-# the picker below -- blind cycling is the lesser of the two.
-next_agent = "prefix+j"
-previous_agent = "prefix+k"
+# Walk the agent panel, which the sidebar plugin makes the inbox of pinned, blocked
+# and done agents: ctrl+hjkl moves between panes, ctrl+shift+j/k between agents.
+next_agent = "ctrl+shift+j"
+previous_agent = "ctrl+shift+k"
 
 # ctrl+shift+\ and ctrl+shift+- are the shared chords: Zen and the terminal
 # never receive the same keystroke, so the same action gets the same keys in
@@ -89,27 +82,10 @@ split_horizontal = ["ctrl+shift+-"]
 # tmux `bind C-o` / `bind s` -> the sesh picker (see [[keys.command]] below).
 # prefix+w keeps herdr's own workspace picker.
 
-# goto (navigate mode) is herdr's own pane search, unused here, and it frees
-# prefix+g for lazygit below. ctrl+shift+h focuses the workspace sidebar, which
-# is the same idea as ctrl+shift+h hiding Zen's sidebar -- disjoint apps, one
-# chord. ctrl+alt+* was tried first and is not delivered through the terminal.
-goto = "ctrl+shift+h"
+# goto (herdr's navigate mode) defaults to prefix+g, which is lazygit's below.
+goto = ""
 
-# Jump to whichever agent most recently blocked or finished. i for "attention".
-[[keys.command]]
-key = "ctrl+shift+i"
-type = "plugin_action"
-command = "attention.jump"
-description = "jump to the agent needing attention"
-
-# prefix+a cycles blind; this shows what each agent is doing first.
-[[keys.command]]
-key = "prefix+a"
-type = "plugin_action"
-command = "agents.pick"
-description = "pick an agent"
-
-# g is git: prefix+shift+g new worktree, prefix+ctrl+g open one, prefix+g here.
+# g is git: prefix+ctrl+g new worktree, prefix+g lazygit here.
 [[keys.command]]
 key = "prefix+g"
 type = "popup"
@@ -213,6 +189,57 @@ type = "plugin_action"
 command = "smart-splits.nav-up"
 description = "navigate up (nvim/herdr)"
 
+# tmux's prefix+m marks a pane; here it pins the focused agent to the top of the inbox.
+[[keys.command]]
+key = "prefix+m"
+type = "plugin_action"
+command = "sidebar.pin"
+description = "pin the agent to the top of the inbox"
+
+[[keys.command]]
+key = "prefix+shift+m"
+type = "plugin_action"
+command = "sidebar.acknowledge"
+description = "mark the agent's reply read"
+
+[[keys.command]]
+key = "shift+down"
+type = "plugin_action"
+command = "sidebar.next"
+description = "next space, worktree or agent in the sidebar"
+
+[[keys.command]]
+key = "shift+up"
+type = "plugin_action"
+command = "sidebar.previous"
+description = "previous space, worktree or agent in the sidebar"
+
+# i for the focused agent's pull request, the one looked at most, shift for its Linear issue;
+# prefix+shift+p is herdr's rename_pane.
+[[keys.command]]
+key = "prefix+i"
+type = "plugin_action"
+command = "sidebar.open-pull-request"
+description = "open the agent's pull request"
+
+[[keys.command]]
+key = "prefix+shift+i"
+type = "plugin_action"
+command = "sidebar.open-issue"
+description = "open the agent's Linear issue"
+
+[[keys.command]]
+key = "prefix+{"
+type = "plugin_action"
+command = "smart-splits.swap-previous"
+description = "swap with the previous pane (tmux)"
+
+[[keys.command]]
+key = "prefix+}"
+type = "plugin_action"
+command = "smart-splits.swap-next"
+description = "swap with the next pane (tmux)"
+
 [[keys.command]]
 key = "ctrl+l"
 type = "plugin_action"
@@ -245,13 +272,71 @@ description = "resize right (nvim/herdr)"
 
 [ui]
 show_agent_labels_on_pane_borders = true
+# Room for an agent's task title under a worktree; the default 26 cuts most of them off.
+sidebar_width = 60
+sidebar_max_width = 60
 agent_panel_sort = "spaces"
 tab_bar_right = [{ type = "zoom" }]
 tab_bar_right_separator = " │ "
 
-status_indicators = "symbols"
+# A coloured dot for working, blocked and done, a ring for idle: symbols' half-filled
+# working circle reads as a 9 at this size.
+status_indicators = "dots"
 [ui.toast]
 delivery = "off"
+
+# Every token here but state_icon, workspace and git_status comes from the sidebar local
+# plugin. Colours are herdr's catppuccin palette, since token fg takes hex only.
+#
+# The agent panel is the inbox: pinned agents, then blocked, done and unread ones newest first.
+# ✓ marks a reply not yet read (prefix+shift+m), which stays after a glance ends herdr's done.
+# A title dims once its agent is idle and read; a project name takes its favicon's colour. The
+# second row says why it waits: the question asked, or the reply's last line.
+[ui.sidebar.agents]
+row_gap = 0
+rows = [
+  [
+    "state_icon", { token = "$unread", fg = "#a6e3a1" }, { token = "$title_active", fg = "#cdd6f4", bold = true }, "$title_idle",
+    "$project_plain", { token = "$project_red", fg = "#f38ba8" }, { token = "$project_peach", fg = "#fab387" }, { token = "$project_green", fg = "#a6e3a1" }, { token = "$project_teal", fg = "#94e2d5" }, { token = "$project_blue", fg = "#89b4fa" }, { token = "$project_mauve", fg = "#cba6f7" },
+  ],
+  ["$reason"],
+]
+
+# Each space is a tree: its own row (its name, bold while focused; ticket; pull request),
+# then a row per agent and per other checkout its panes are in, with that checkout's agents
+# under it. The plugin writes each row's text with a state glyph (× blocked, ● working, ✓ done
+# or unread, ○ idle), or "▸" on the row the focus is on, and a heavy ┕━ on the worktree the
+# focus is in. The rules below pick its colour from those: the focused row and worktree mauve,
+# blocked red, done green, working bright, idle grey. A pull request's
+# number takes GitHub's colour for its state. A worktree space herdr nests under its repository,
+# with a single agent, shows that agent's title on its own row instead: green while its reply is
+# unread, bright while it works or waits, grey once idle. A blank line parts projects; herdr keeps
+# a repository's linked-worktree spaces with it.
+[ui.sidebar.spaces]
+row_gap = 1
+rows = [
+  [
+    "state_icon", { token = "$name_focused", fg = "#cdd6f4", bold = true }, { token = "$name", fg = "#a6adc8" },
+    { token = "$ticket", rules = [{ equals = "main", hide = true }, { equals = "master", hide = true }] },
+    { token = "$lead_unread", fg = "#a6e3a1", bold = true }, { token = "$lead_active", fg = "#cdd6f4", bold = true }, "$lead_idle",
+    { token = "$pr_open", fg = "#a6e3a1" }, "$pr_draft", { token = "$pr_merged", fg = "#cba6f7" }, { token = "$pr_closed", fg = "#f38ba8" }, "git_status",
+  ],
+  [{ token = "$row_1", rules = [{ contains = "▸", fg = "#cba6f7", bold = true }, { contains = "━ ", fg = "#cba6f7", bold = true }, { contains = "├─ ", fg = "#bac2de", bold = true }, { contains = "└─ ", fg = "#bac2de", bold = true }, { contains = "× ", fg = "#f38ba8", bold = true }, { contains = "✓ ", fg = "#a6e3a1", bold = true }, { contains = "● ", fg = "#cdd6f4", bold = true }] }, { token = "$row_1_pr_open", fg = "#a6e3a1" }, "$row_1_pr_draft", { token = "$row_1_pr_merged", fg = "#cba6f7" }, { token = "$row_1_pr_closed", fg = "#f38ba8" }],
+  [{ token = "$row_2", rules = [{ contains = "▸", fg = "#cba6f7", bold = true }, { contains = "━ ", fg = "#cba6f7", bold = true }, { contains = "├─ ", fg = "#bac2de", bold = true }, { contains = "└─ ", fg = "#bac2de", bold = true }, { contains = "× ", fg = "#f38ba8", bold = true }, { contains = "✓ ", fg = "#a6e3a1", bold = true }, { contains = "● ", fg = "#cdd6f4", bold = true }] }, { token = "$row_2_pr_open", fg = "#a6e3a1" }, "$row_2_pr_draft", { token = "$row_2_pr_merged", fg = "#cba6f7" }, { token = "$row_2_pr_closed", fg = "#f38ba8" }],
+  [{ token = "$row_3", rules = [{ contains = "▸", fg = "#cba6f7", bold = true }, { contains = "━ ", fg = "#cba6f7", bold = true }, { contains = "├─ ", fg = "#bac2de", bold = true }, { contains = "└─ ", fg = "#bac2de", bold = true }, { contains = "× ", fg = "#f38ba8", bold = true }, { contains = "✓ ", fg = "#a6e3a1", bold = true }, { contains = "● ", fg = "#cdd6f4", bold = true }] }, { token = "$row_3_pr_open", fg = "#a6e3a1" }, "$row_3_pr_draft", { token = "$row_3_pr_merged", fg = "#cba6f7" }, { token = "$row_3_pr_closed", fg = "#f38ba8" }],
+  [{ token = "$row_4", rules = [{ contains = "▸", fg = "#cba6f7", bold = true }, { contains = "━ ", fg = "#cba6f7", bold = true }, { contains = "├─ ", fg = "#bac2de", bold = true }, { contains = "└─ ", fg = "#bac2de", bold = true }, { contains = "× ", fg = "#f38ba8", bold = true }, { contains = "✓ ", fg = "#a6e3a1", bold = true }, { contains = "● ", fg = "#cdd6f4", bold = true }] }, { token = "$row_4_pr_open", fg = "#a6e3a1" }, "$row_4_pr_draft", { token = "$row_4_pr_merged", fg = "#cba6f7" }, { token = "$row_4_pr_closed", fg = "#f38ba8" }],
+  [{ token = "$row_5", rules = [{ contains = "▸", fg = "#cba6f7", bold = true }, { contains = "━ ", fg = "#cba6f7", bold = true }, { contains = "├─ ", fg = "#bac2de", bold = true }, { contains = "└─ ", fg = "#bac2de", bold = true }, { contains = "× ", fg = "#f38ba8", bold = true }, { contains = "✓ ", fg = "#a6e3a1", bold = true }, { contains = "● ", fg = "#cdd6f4", bold = true }] }, { token = "$row_5_pr_open", fg = "#a6e3a1" }, "$row_5_pr_draft", { token = "$row_5_pr_merged", fg = "#cba6f7" }, { token = "$row_5_pr_closed", fg = "#f38ba8" }],
+  [{ token = "$row_6", rules = [{ contains = "▸", fg = "#cba6f7", bold = true }, { contains = "━ ", fg = "#cba6f7", bold = true }, { contains = "├─ ", fg = "#bac2de", bold = true }, { contains = "└─ ", fg = "#bac2de", bold = true }, { contains = "× ", fg = "#f38ba8", bold = true }, { contains = "✓ ", fg = "#a6e3a1", bold = true }, { contains = "● ", fg = "#cdd6f4", bold = true }] }, { token = "$row_6_pr_open", fg = "#a6e3a1" }, "$row_6_pr_draft", { token = "$row_6_pr_merged", fg = "#cba6f7" }, { token = "$row_6_pr_closed", fg = "#f38ba8" }],
+  [{ token = "$row_7", rules = [{ contains = "▸", fg = "#cba6f7", bold = true }, { contains = "━ ", fg = "#cba6f7", bold = true }, { contains = "├─ ", fg = "#bac2de", bold = true }, { contains = "└─ ", fg = "#bac2de", bold = true }, { contains = "× ", fg = "#f38ba8", bold = true }, { contains = "✓ ", fg = "#a6e3a1", bold = true }, { contains = "● ", fg = "#cdd6f4", bold = true }] }, { token = "$row_7_pr_open", fg = "#a6e3a1" }, "$row_7_pr_draft", { token = "$row_7_pr_merged", fg = "#cba6f7" }, { token = "$row_7_pr_closed", fg = "#f38ba8" }],
+  [{ token = "$row_8", rules = [{ contains = "▸", fg = "#cba6f7", bold = true }, { contains = "━ ", fg = "#cba6f7", bold = true }, { contains = "├─ ", fg = "#bac2de", bold = true }, { contains = "└─ ", fg = "#bac2de", bold = true }, { contains = "× ", fg = "#f38ba8", bold = true }, { contains = "✓ ", fg = "#a6e3a1", bold = true }, { contains = "● ", fg = "#cdd6f4", bold = true }] }, { token = "$row_8_pr_open", fg = "#a6e3a1" }, "$row_8_pr_draft", { token = "$row_8_pr_merged", fg = "#cba6f7" }, { token = "$row_8_pr_closed", fg = "#f38ba8" }],
+  [{ token = "$row_9", rules = [{ contains = "▸", fg = "#cba6f7", bold = true }, { contains = "━ ", fg = "#cba6f7", bold = true }, { contains = "├─ ", fg = "#bac2de", bold = true }, { contains = "└─ ", fg = "#bac2de", bold = true }, { contains = "× ", fg = "#f38ba8", bold = true }, { contains = "✓ ", fg = "#a6e3a1", bold = true }, { contains = "● ", fg = "#cdd6f4", bold = true }] }, { token = "$row_9_pr_open", fg = "#a6e3a1" }, "$row_9_pr_draft", { token = "$row_9_pr_merged", fg = "#cba6f7" }, { token = "$row_9_pr_closed", fg = "#f38ba8" }],
+  [{ token = "$row_10", rules = [{ contains = "▸", fg = "#cba6f7", bold = true }, { contains = "━ ", fg = "#cba6f7", bold = true }, { contains = "├─ ", fg = "#bac2de", bold = true }, { contains = "└─ ", fg = "#bac2de", bold = true }, { contains = "× ", fg = "#f38ba8", bold = true }, { contains = "✓ ", fg = "#a6e3a1", bold = true }, { contains = "● ", fg = "#cdd6f4", bold = true }] }, { token = "$row_10_pr_open", fg = "#a6e3a1" }, "$row_10_pr_draft", { token = "$row_10_pr_merged", fg = "#cba6f7" }, { token = "$row_10_pr_closed", fg = "#f38ba8" }],
+  [{ token = "$row_11", rules = [{ contains = "▸", fg = "#cba6f7", bold = true }, { contains = "━ ", fg = "#cba6f7", bold = true }, { contains = "├─ ", fg = "#bac2de", bold = true }, { contains = "└─ ", fg = "#bac2de", bold = true }, { contains = "× ", fg = "#f38ba8", bold = true }, { contains = "✓ ", fg = "#a6e3a1", bold = true }, { contains = "● ", fg = "#cdd6f4", bold = true }] }, { token = "$row_11_pr_open", fg = "#a6e3a1" }, "$row_11_pr_draft", { token = "$row_11_pr_merged", fg = "#cba6f7" }, { token = "$row_11_pr_closed", fg = "#f38ba8" }],
+  [{ token = "$row_12", rules = [{ contains = "▸", fg = "#cba6f7", bold = true }, { contains = "━ ", fg = "#cba6f7", bold = true }, { contains = "├─ ", fg = "#bac2de", bold = true }, { contains = "└─ ", fg = "#bac2de", bold = true }, { contains = "× ", fg = "#f38ba8", bold = true }, { contains = "✓ ", fg = "#a6e3a1", bold = true }, { contains = "● ", fg = "#cdd6f4", bold = true }] }, { token = "$row_12_pr_open", fg = "#a6e3a1" }, "$row_12_pr_draft", { token = "$row_12_pr_merged", fg = "#cba6f7" }, { token = "$row_12_pr_closed", fg = "#f38ba8" }],
+  [{ token = "$row_13", rules = [{ contains = "▸", fg = "#cba6f7", bold = true }, { contains = "━ ", fg = "#cba6f7", bold = true }, { contains = "├─ ", fg = "#bac2de", bold = true }, { contains = "└─ ", fg = "#bac2de", bold = true }, { contains = "× ", fg = "#f38ba8", bold = true }, { contains = "✓ ", fg = "#a6e3a1", bold = true }, { contains = "● ", fg = "#cdd6f4", bold = true }] }, { token = "$row_13_pr_open", fg = "#a6e3a1" }, "$row_13_pr_draft", { token = "$row_13_pr_merged", fg = "#cba6f7" }, { token = "$row_13_pr_closed", fg = "#f38ba8" }],
+  [{ token = "$row_14", rules = [{ contains = "▸", fg = "#cba6f7", bold = true }, { contains = "━ ", fg = "#cba6f7", bold = true }, { contains = "├─ ", fg = "#bac2de", bold = true }, { contains = "└─ ", fg = "#bac2de", bold = true }, { contains = "× ", fg = "#f38ba8", bold = true }, { contains = "✓ ", fg = "#a6e3a1", bold = true }, { contains = "● ", fg = "#cdd6f4", bold = true }] }, { token = "$row_14_pr_open", fg = "#a6e3a1" }, "$row_14_pr_draft", { token = "$row_14_pr_merged", fg = "#cba6f7" }, { token = "$row_14_pr_closed", fg = "#f38ba8" }],
+  [{ token = "$row_15", rules = [{ contains = "▸", fg = "#cba6f7", bold = true }, { contains = "━ ", fg = "#cba6f7", bold = true }, { contains = "├─ ", fg = "#bac2de", bold = true }, { contains = "└─ ", fg = "#bac2de", bold = true }, { contains = "× ", fg = "#f38ba8", bold = true }, { contains = "✓ ", fg = "#a6e3a1", bold = true }, { contains = "● ", fg = "#cdd6f4", bold = true }] }, { token = "$row_15_pr_open", fg = "#a6e3a1" }, "$row_15_pr_draft", { token = "$row_15_pr_merged", fg = "#cba6f7" }, { token = "$row_15_pr_closed", fg = "#f38ba8" }],
+]
 
 # session.json already restores the workspace/tab/pane layout after a reboot;
 # these two bring back what was inside the panes.

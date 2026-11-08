@@ -1,0 +1,103 @@
+# Tokens for the sidebar rows in config.toml: each space's tree of worktrees and agents, and
+# the inbox in the agent panel. Actions walk that tree, pin agents, mark replies read and open
+# the focused agent's issue or pull request. Every hook below but the last two runs the same
+# full recompute, so the events only decide when.
+id = "sidebar"
+name = "Sidebar context"
+version = "0.2.0"
+min_herdr_version = "0.9.0"
+description = "A tree of spaces, worktrees and agents, an inbox of agents waiting, and keys to walk them"
+platforms = ["macos", "linux"]
+
+# shift+down / shift+up: the next or previous row of the tree, then of the inbox.
+[[actions]]
+id = "next"
+title = "Go to the next space, worktree or agent in the sidebar"
+contexts = ["global"]
+command = ["bash", "scripts/navigate.sh", "next"]
+
+[[actions]]
+id = "previous"
+title = "Go to the previous space, worktree or agent in the sidebar"
+contexts = ["global"]
+command = ["bash", "scripts/navigate.sh", "previous"]
+
+# prefix+m: the focused agent stays at the top of the inbox until pinned again.
+[[actions]]
+id = "pin"
+title = "Pin the agent to the top of the inbox, or unpin it"
+contexts = ["global"]
+command = ["bash", "scripts/pin.sh"]
+
+# prefix+shift+m: the focused agent's reply is read, so it leaves the inbox.
+[[actions]]
+id = "acknowledge"
+title = "Mark the agent's reply read"
+contexts = ["global"]
+command = ["bash", "scripts/acknowledge.sh"]
+
+[[actions]]
+id = "open-issue"
+title = "Open the agent's Linear issue"
+contexts = ["global"]
+command = ["bash", "scripts/open.sh", "issue"]
+
+# Linear's review view where the repository is wired to Linear, GitHub everywhere else.
+[[actions]]
+id = "open-pull-request"
+title = "Open the agent's pull request"
+contexts = ["global"]
+command = ["bash", "scripts/open.sh", "pull-request"]
+
+[[startup]]
+command = ["bash", "scripts/report.sh"]
+
+[[events]]
+on = "pane.agent_detected"
+command = ["bash", "scripts/report.sh"]
+
+[[events]]
+on = "pane.agent_status_changed"
+command = ["bash", "scripts/report.sh"]
+
+[[events]]
+on = "pane.closed"
+command = ["bash", "scripts/report.sh"]
+
+[[events]]
+on = "pane.moved"
+command = ["bash", "scripts/report.sh"]
+
+[[events]]
+on = "tab.moved"
+command = ["bash", "scripts/report.sh"]
+
+[[events]]
+on = "tab.closed"
+command = ["bash", "scripts/report.sh"]
+
+[[events]]
+on = "workspace.created"
+command = ["bash", "scripts/report.sh"]
+
+[[events]]
+on = "workspace.closed"
+command = ["bash", "scripts/report.sh"]
+
+[[events]]
+on = "workspace.moved"
+command = ["bash", "scripts/report.sh"]
+
+[[events]]
+on = "workspace.reordered"
+command = ["bash", "scripts/report.sh"]
+
+[[events]]
+on = "workspace.renamed"
+command = ["bash", "scripts/report.sh"]
+
+# A move of the focus only redraws the rows, from the last full run's details. A space
+# switch fires pane.focused too, so workspace.focused isn't hooked twice over.
+[[events]]
+on = "pane.focused"
+command = ["bash", "scripts/report.sh", "rows"]
