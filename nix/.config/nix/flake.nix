@@ -195,7 +195,9 @@
             "aerospace"
             "sf-symbols"
             "karabiner-elements"
-            "raycast"
+            # The cask self-updates, so a plain upgrade skips it and v1 never moved to
+            # v2 (the Tahoe build). Greedy makes the rebuild upgrade it anyway.
+            { name = "raycast"; greedy = true; }
             "sublime-text"
             "postman"
             "visual-studio-code"
@@ -317,6 +319,15 @@
 
         # Necessary for using flakes on this system.
         nix.settings.experimental-features = "nix-command flakes";
+          # Free ⌘Space for Raycast. -dict-add edits only Spotlight's entry (64);
+          # CustomUserPreferences would overwrite every other system shortcut.
+          echo "disabling Spotlight's ⌘Space..." >&2
+          launchctl asuser "$(id -u -- ${user})" sudo --user=${user} -- \
+            defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 64 \
+            '<dict><key>enabled</key><false/><key>value</key><dict><key>parameters</key><array><integer>32</integer><integer>49</integer><integer>1048576</integer></array><key>type</key><string>standard</string></dict></dict>'
+          launchctl asuser "$(id -u -- ${user})" sudo --user=${user} -- \
+            /System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings -u
+
 
         # Automatic store optimization - runs weekly on Sunday at 3am
         nix.optimise = {
