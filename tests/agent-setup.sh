@@ -5,8 +5,8 @@ scratch=$(mktemp -d)
 trap 'rm -rf "$scratch"' EXIT
 home=$scratch/home
 mkdir -p "$home/.claude" "$home/.codex"
-mkdir -p "$home/.claude/skills/rearchitect"
-printf 'local skill notes' > "$home/.claude/skills/rearchitect/local-notes.txt"
+mkdir -p "$home/.claude/skills/wizard"
+printf 'local skill notes' > "$home/.claude/skills/wizard/local-notes.txt"
 printf '{"permissions":{"allow":["Bash(pnpm:*)"]},"unknown":42,"hooks":{"Stop":[{"hooks":[{"type":"command","command":"keep-claude-hook"}]}]}}\n' > "$home/.claude/settings.json"
 printf 'original agreement' > "$home/.claude/CLAUDE.md"
 printf 'sandbox_mode="read-only"\n[projects."/example"]\ntrust_level="trusted"\n' > "$home/.codex/config.toml"
@@ -26,7 +26,7 @@ dasel -i toml -o json < "$home/.codex/config.toml" | jq -e '.hooks.state.example
 dasel -i toml -o json < "$home/.codex/config.toml" | jq -e '.tui.keymap.global.open_transcript == "ctrl-o" and .tui.keymap.global.copy == "alt-c" and .tui.keymap.composer.submit == ["enter"]' >/dev/null
 dasel -i toml -o json < "$home/.codex/config.toml" | jq -e '.tui.status_line == []' >/dev/null
 [[ $home/.claude/CLAUDE.md -ef $repo/agents/.agents/AGENTS.md ]]
-[[ -L $home/.claude/skills/rearchitect ]]
+[[ -L $home/.claude/skills/wizard ]]
 bash "$repo/agents/.config/agent-setup/apply.sh" --repo "$repo" --home "$home" --apply > "$scratch/second"
 [[ $(find "$home/.local/state/agent-setup/backups" -name manifest.json | wc -l | tr -d ' ') == 1 ]]
 manifest=$(find "$home/.local/state/agent-setup/backups" -name manifest.json)
@@ -34,7 +34,7 @@ bash "$repo/agents/.config/agent-setup/apply.sh" --rollback "$manifest" >/dev/nu
 cmp "$scratch/original" "$home/.claude/settings.json"
 cmp "$scratch/codex" "$home/.codex/config.toml"
 [[ $(cat "$home/.claude/CLAUDE.md") == 'original agreement' ]]
-[[ $(cat "$home/.claude/skills/rearchitect/local-notes.txt") == 'local skill notes' ]]
+[[ $(cat "$home/.claude/skills/wizard/local-notes.txt") == 'local skill notes' ]]
 printf '{"tui":{"local":true,"old":1},"hooks":{"Stop":[{"hooks":[{"command":"/x/peon-ping/peon.sh"},{"command":"keep"}]}]}}' > "$scratch/live"
 printf '{"tui":{"notifications":false}}' > "$scratch/wanted"
 printf '{"test":{"tui":{"old":1}}}' > "$scratch/previous"
