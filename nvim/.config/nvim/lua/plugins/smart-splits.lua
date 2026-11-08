@@ -10,7 +10,13 @@ return {
         -- Matches the old tmux.nvim resize_step_x/y.
         default_amount = 5,
         -- Matches tmux.nvim's cycle_navigation = false and herdr's no-neighbor fallthrough.
-        at_edge = "stop",
+        -- herdr-app has no smart-splits backend, so at an edge its window moves the pane
+        -- (herdr-app/.config/herdr-app/mods/keys forwards ctrl+hjkl here).
+        at_edge = function(ctx)
+            if vim.env.HC_TERMINAL_ID and not vim.env.HERDR_PANE_ID and not vim.env.TMUX then
+                vim.system({ "herdr-app", "do", "pane.go", "--direction", ctx.direction })
+            end
+        end,
         ignored_filetypes = { "NvimTree", "neo-tree" },
         float_win_behavior = "previous",
     },

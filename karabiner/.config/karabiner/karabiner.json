@@ -59,7 +59,8 @@
                                             "^co\\.zeit\\.hyper$",
                                             "^io\\.alacritty$",
                                             "^net\\.kovidgoyal\\.kitty$",
-                                            "^com\\.mitchellh\\.ghostty$"
+                                            "^com\\.mitchellh\\.ghostty$",
+                                            "^dev\\.herdr\\.app$"
                                         ]
                                     }
                                 ]
@@ -114,7 +115,8 @@
                                             "^co\\.zeit\\.hyper$",
                                             "^io\\.alacritty$",
                                             "^net\\.kovidgoyal\\.kitty$",
-                                            "^com\\.mitchellh\\.ghostty$"
+                                            "^com\\.mitchellh\\.ghostty$",
+                                            "^dev\\.herdr\\.app$"
                                         ]
                                     }
                                 ]
@@ -215,7 +217,8 @@
                                             "^co\\.zeit\\.hyper$",
                                             "^io\\.alacritty$",
                                             "^net\\.kovidgoyal\\.kitty$",
-                                            "^com\\.mitchellh\\.ghostty$"
+                                            "^com\\.mitchellh\\.ghostty$",
+                                            "^dev\\.herdr\\.app$"
                                         ]
                                     }
                                 ]
@@ -273,7 +276,8 @@
                                             "^co\\.zeit\\.hyper$",
                                             "^io\\.alacritty$",
                                             "^net\\.kovidgoyal\\.kitty$",
-                                            "^com\\.mitchellh\\.ghostty$"
+                                            "^com\\.mitchellh\\.ghostty$",
+                                            "^dev\\.herdr\\.app$"
                                         ]
                                     }
                                 ]
@@ -341,6 +345,7 @@
                                             "^com\\.apple\\.Terminal$",
                                             "^com\\.googlecode\\.iterm2$",
                                             "^com\\.mitchellh\\.ghostty$",
+                                            "^dev\\.herdr\\.app$",
                                             "^co\\.zeit\\.hyperterm$",
                                             "^co\\.zeit\\.hyper$",
                                             "^io\\.alacritty$",
@@ -403,6 +408,7 @@
                                             "^com\\.apple\\.Terminal$",
                                             "^com\\.googlecode\\.iterm2$",
                                             "^com\\.mitchellh\\.ghostty$",
+                                            "^dev\\.herdr\\.app$",
                                             "^co\\.zeit\\.hyperterm$",
                                             "^co\\.zeit\\.hyper$",
                                             "^io\\.alacritty$",
@@ -465,6 +471,7 @@
                                             "^com\\.apple\\.Terminal$",
                                             "^com\\.googlecode\\.iterm2$",
                                             "^com\\.mitchellh\\.ghostty$",
+                                            "^dev\\.herdr\\.app$",
                                             "^co\\.zeit\\.hyperterm$",
                                             "^co\\.zeit\\.hyper$",
                                             "^io\\.alacritty$",
@@ -527,6 +534,7 @@
                                             "^com\\.apple\\.Terminal$",
                                             "^com\\.googlecode\\.iterm2$",
                                             "^com\\.mitchellh\\.ghostty$",
+                                            "^dev\\.herdr\\.app$",
                                             "^co\\.zeit\\.hyperterm$",
                                             "^co\\.zeit\\.hyper$",
                                             "^io\\.alacritty$",
@@ -597,6 +605,7 @@
                                             "^io\\.alacritty$",
                                             "^net\\.kovidgoyal\\.kitty$",
                                             "^com\\.mitchellh\\.ghostty$",
+                                            "^dev\\.herdr\\.app$",
                                             "^com\\.jetbrains\\.",
                                             "^com\\.microsoft\\.VSCode$",
                                             "^com\\.microsoft\\.visual-studio$"
@@ -658,6 +667,7 @@
                                             "^io\\.alacritty$",
                                             "^net\\.kovidgoyal\\.kitty$",
                                             "^com\\.mitchellh\\.ghostty$",
+                                            "^dev\\.herdr\\.app$",
                                             "^com\\.jetbrains\\.",
                                             "^com\\.microsoft\\.VSCode$",
                                             "^com\\.microsoft\\.visual-studio$"
@@ -719,6 +729,7 @@
                                             "^io\\.alacritty$",
                                             "^net\\.kovidgoyal\\.kitty$",
                                             "^com\\.mitchellh\\.ghostty$",
+                                            "^dev\\.herdr\\.app$",
                                             "^com\\.jetbrains\\.",
                                             "^com\\.microsoft\\.VSCode$",
                                             "^com\\.microsoft\\.visual-studio$"
@@ -782,6 +793,7 @@
                                             "^com\\.apple\\.Terminal$",
                                             "^com\\.googlecode\\.iterm2$",
                                             "^com\\.mitchellh\\.ghostty$",
+                                            "^dev\\.herdr\\.app$",
                                             "^co\\.zeit\\.hyperterm$",
                                             "^co\\.zeit\\.hyper$",
                                             "^io\\.alacritty$",
@@ -849,6 +861,7 @@
                                             "^com\\.apple\\.Terminal$",
                                             "^com\\.googlecode\\.iterm2$",
                                             "^com\\.mitchellh\\.ghostty$",
+                                            "^dev\\.herdr\\.app$",
                                             "^co\\.zeit\\.hyperterm$",
                                             "^co\\.zeit\\.hyper$",
                                             "^io\\.alacritty$",
@@ -917,6 +930,7 @@
                                             "^com\\.apple\\.Terminal$",
                                             "^com\\.googlecode\\.iterm2$",
                                             "^com\\.mitchellh\\.ghostty$",
+                                            "^dev\\.herdr\\.app$",
                                             "^co\\.zeit\\.hyperterm$",
                                             "^co\\.zeit\\.hyper$",
                                             "^io\\.alacritty$",
@@ -984,6 +998,7 @@
                                             "^com\\.apple\\.Terminal$",
                                             "^com\\.googlecode\\.iterm2$",
                                             "^com\\.mitchellh\\.ghostty$",
+                                            "^dev\\.herdr\\.app$",
                                             "^co\\.zeit\\.hyperterm$",
                                             "^co\\.zeit\\.hyper$",
                                             "^io\\.alacritty$",
@@ -1048,6 +1063,7 @@
                                             "^com\\.apple\\.Terminal$",
                                             "^com\\.googlecode\\.iterm2$",
                                             "^com\\.mitchellh\\.ghostty$",
+                                            "^dev\\.herdr\\.app$",
                                             "^co\\.zeit\\.hyperterm$",
                                             "^co\\.zeit\\.hyper$",
                                             "^io\\.alacritty$",
@@ -1115,6 +1131,7 @@
                                             "^com\\.apple\\.Terminal$",
                                             "^com\\.googlecode\\.iterm2$",
                                             "^com\\.mitchellh\\.ghostty$",
+                                            "^dev\\.herdr\\.app$",
                                             "^co\\.zeit\\.hyperterm$",
                                             "^co\\.zeit\\.hyper$",
                                             "^io\\.alacritty$",
@@ -1182,6 +1199,7 @@
                                             "^com\\.apple\\.Terminal$",
                                             "^com\\.googlecode\\.iterm2$",
                                             "^com\\.mitchellh\\.ghostty$",
+                                            "^dev\\.herdr\\.app$",
                                             "^co\\.zeit\\.hyperterm$",
                                             "^co\\.zeit\\.hyper$",
                                             "^io\\.alacritty$",
@@ -1244,6 +1262,7 @@
                                             "^com\\.apple\\.Terminal$",
                                             "^com\\.googlecode\\.iterm2$",
                                             "^com\\.mitchellh\\.ghostty$",
+                                            "^dev\\.herdr\\.app$",
                                             "^co\\.zeit\\.hyperterm$",
                                             "^co\\.zeit\\.hyper$",
                                             "^io\\.alacritty$",
@@ -1311,6 +1330,7 @@
                                             "^com\\.apple\\.Terminal$",
                                             "^com\\.googlecode\\.iterm2$",
                                             "^com\\.mitchellh\\.ghostty$",
+                                            "^dev\\.herdr\\.app$",
                                             "^co\\.zeit\\.hyperterm$",
                                             "^co\\.zeit\\.hyper$",
                                             "^io\\.alacritty$",
@@ -2028,6 +2048,7 @@
                                             "^com\\.apple\\.Terminal$",
                                             "^com\\.googlecode\\.iterm2$",
                                             "^com\\.mitchellh\\.ghostty$",
+                                            "^dev\\.herdr\\.app$",
                                             "^co\\.zeit\\.hyperterm$",
                                             "^co\\.zeit\\.hyper$",
                                             "^io\\.alacritty$",
