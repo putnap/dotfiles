@@ -77,6 +77,7 @@
                 gh-dash
                 atuinPinned
                 herdr
+                herdr-core # hc, the server the herdr-app cask's window runs on
                 bun # Ovis's herdr plugin builds and runs on it
                 cloudflared
                 codex
@@ -219,6 +220,8 @@
             "docker-desktop"
             "transmission"
             "vorssaint"
+            # Herdr's desktop app: nixpkgs' herdr-desktop trails upstream's releases by weeks.
+            "herdr-app"
           ];
           masApps = {
             "WhatsApp" = 310633997;
