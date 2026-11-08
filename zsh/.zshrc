@@ -235,3 +235,6 @@ esac
 # pnpm end
 
 # zprof
+
+# clauth completions
+source "/Users/papu/.clauth/completions/clauth.zsh"
