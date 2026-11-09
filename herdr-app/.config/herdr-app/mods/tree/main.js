@@ -247,9 +247,10 @@ function pullRequestChip(t, row) {
   return linkChip(t, `tree-pr-${row.key}`, `#${number}`, t[PULL_REQUEST_COLORS[state]] ?? t.dim, review ?? url, `Open #${number} in ${where}`);
 }
 
-// The row underneath lights on hover too, so a link underlines rather than taking a background.
+// The row underneath lights on hover too, so a link underlines rather than taking a background,
+// and takes no padding of its own: the line's gap alone spaces its labels.
 function linkChip(t, id, label, color, url, tooltip) {
-  return div().id(id).flex_none().px(4).font_medium().text_color(color).cursor_pointer()
+  return div().id(id).flex_none().font_medium().text_color(color).cursor_pointer()
     .tooltip(tooltip).hover((s) => s.underline())
     .on_click((_e, cx) => { cx.stop_propagation(); cx.open_url(url); })
     .child(label);
@@ -263,8 +264,8 @@ const CHECK_MARKS = {
 
 function checksMark(t, row) {
   const { checks, url } = row.pullRequest;
-  return h_flex().id(`tree-checks-${row.key}`).flex_none().h(14).px(2).items_center().cursor_pointer()
-    .hover((s) => s.bg(t.hover)).tooltip(CHECK_MARKS[checks].tooltip)
+  return h_flex().id(`tree-checks-${row.key}`).flex_none().h(14).items_center().cursor_pointer()
+    .tooltip(CHECK_MARKS[checks].tooltip)
     .on_click((_e, cx) => { cx.stop_propagation(); cx.open_url(`${url}/checks`); })
     .child(CHECK_MARKS[checks].mark(t));
 }
@@ -272,8 +273,8 @@ function checksMark(t, row) {
 // A checkout's uncommitted changes, which open Reviewer on them: where they show is where to look.
 function changes(t, row) {
   const { added, removed } = row.changes;
-  return h_flex().id(`tree-changes-${row.key}`).flex_none().gap(3).px(3).cursor_pointer()
-    .hover((s) => s.bg(t.hover)).tooltip(REVIEW_TOOLTIP)
+  return h_flex().id(`tree-changes-${row.key}`).flex_none().gap(3).cursor_pointer()
+    .hover((s) => s.underline()).tooltip(REVIEW_TOOLTIP)
     .on_click((_e, cx) => { cx.stop_propagation(); land(row); showReview(); })
     .child(div().text_color(t.ansi2).child(`+${added}`))
     .child(div().text_color(t.ansi1).child(`−${removed}`));
