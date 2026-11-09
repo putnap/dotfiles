@@ -174,7 +174,6 @@
         homebrew = {
           enable = true;
           brews = [
-            "mas"
             "sketchybar"
             "borders"
             "lua"
@@ -222,14 +221,15 @@
             "vorssaint"
             # Herdr's desktop app: nixpkgs' herdr-desktop trails upstream's releases by weeks.
             "herdr-app"
+            # Casks, not masApps: mas finds installed apps through Spotlight, which is off here,
+            # so bundle reinstalled them on every rebuild.
+            "whatsapp"
+            "windows-app"
           ];
-          masApps = {
-            "WhatsApp" = 310633997;
-            "Windows App" = 1295203466;
-          };
           onActivation.cleanup = "zap";
-          # Refreshes the taps first, so upgrade sees their new releases (hunk sat on 0.17).
-          onActivation.autoUpdate = true;
+          # Off until nix-homebrew#194 merges: auto-update re-execs a wrapper that drops
+          # /opt/homebrew/bin, so bundle can't find mas (#189). nixr's `brew update` refreshes taps.
+          onActivation.autoUpdate = false;
           onActivation.upgrade = true;
         };
 
