@@ -192,6 +192,7 @@ function metaLine(t, row, program) {
     .child(div().flex_1().min_w(0).truncate().child(row.branch ?? "no branch"))
     .when(Boolean(row.pullRequest?.issue), (el) => el.child(linkChip(t, `tree-issue-${row.key}`, row.pullRequest.issue.id, t.muted, row.pullRequest.issue.url)))
     .when(Boolean(row.pullRequest), (el) => el.child(linkChip(t, `tree-pr-${row.key}`, `#${row.pullRequest.number}`, t[PULL_REQUEST_COLORS[row.pullRequest.state]] ?? t.dim, row.pullRequest.url)))
+    .when(Boolean(row.pullRequest?.checks), (el) => el.child(checksMark(t, row)))
     .when(Boolean(row.changes), (el) => el.child(changes(t, row)))
     .when(Boolean(program?.icon), (el) => el.child(svg(program.icon).size(12).flex_none().text_color(program.color ?? t.dim)));
 }
@@ -201,6 +202,20 @@ function linkChip(t, id, label, color, url) {
     .hover((s) => s.bg(t.hover))
     .on_click((_e, cx) => { cx.stop_propagation(); cx.open_url(url); })
     .child(label);
+}
+
+// Only checks that need a look show: failing ones as a red cross, running ones as a dim dot.
+const CHECK_MARKS = {
+  failing: { tooltip: "Checks failing", mark: (t) => div().text_color(t.ansi1).font_bold().child("✗") },
+  running: { tooltip: "Checks running", mark: (t) => div().size(5).rounded(3).bg(t.dim) },
+};
+
+function checksMark(t, row) {
+  const { checks, url } = row.pullRequest;
+  return h_flex().id(`tree-checks-${row.key}`).flex_none().h(14).px(2).items_center().cursor_pointer()
+    .hover((s) => s.bg(t.hover)).tooltip(CHECK_MARKS[checks].tooltip)
+    .on_click((_e, cx) => { cx.stop_propagation(); cx.open_url(`${url}/checks`); })
+    .child(CHECK_MARKS[checks].mark(t));
 }
 
 // A checkout's uncommitted changes, which open Reviewer on them: where they show is where to look.

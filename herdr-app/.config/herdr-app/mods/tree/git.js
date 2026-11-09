@@ -74,7 +74,7 @@ const LINEAR_ISSUE = /https:\/\/linear\.app\/[\w-]+\/issue\/([A-Za-z]+-\d+)[\w-]
 
 async function askPullRequest(machine, top) {
   try {
-    const r = await exec("gh", ["pr", "view", "--json", "number,state,isDraft,url,body,comments"], { cwd: top, on: machine });
+    const r = await exec("gh", ["pr", "view", "--json", "number,state,isDraft,url,body,comments,statusCheckRollup"], { cwd: top, on: machine });
     if (r.code !== 0) return null;
     const pr = JSON.parse(r.stdout);
     const issue = [pr.body ?? "", ...(pr.comments ?? []).map((c) => c.body ?? "")].join(" ").match(LINEAR_ISSUE);
@@ -83,8 +83,21 @@ async function askPullRequest(machine, top) {
       state: pr.state !== "OPEN" ? pr.state.toLowerCase() : pr.isDraft ? "draft" : "open",
       url: pr.url,
       issue: issue ? { id: issue[1].toUpperCase(), url: issue[0] } : null,
+      checks: checksOf(pr.statusCheckRollup ?? []),
     };
   } catch {
     return null;
   }
+}
+
+// GitHub's checks as one word: "failing" over "running"; passing ones, or none, say nothing.
+// A check run reports its conclusion once completed, else its status; a commit status its state.
+const FAILED = new Set(["FAILURE", "ERROR", "TIMED_OUT", "STARTUP_FAILURE", "ACTION_REQUIRED"]);
+const RUNNING = new Set(["PENDING", "EXPECTED", "QUEUED", "IN_PROGRESS", "WAITING", "REQUESTED"]);
+
+function checksOf(rollup) {
+  const outcomes = rollup.map((check) => check.conclusion || check.state || check.status);
+  if (outcomes.some((o) => FAILED.has(o))) return "failing";
+  if (outcomes.some((o) => RUNNING.has(o))) return "running";
+  return null;
 }
