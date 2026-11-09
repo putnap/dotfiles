@@ -3,13 +3,14 @@
 // to a strip of space tiles instead of hiding it, so shift+up/down still walk it (tree.next / tree.previous).
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
-import { run, spaces, focused, theme, nextCommand, setAgentOrder, keys, agents } from "herdr";
+import { run, spaces, focused, theme, nextCommand, setAgentOrder, keys, agents, openOverlay } from "herdr";
 import { Git } from "./git.js";
 import { buildTree, nextStop, latestAttention } from "./model.js";
 import { spaceColor, publishSpaceColors } from "./colors.js";
 import { askAccounts, accountsShelf } from "./accounts.js";
 import { askCacheExpiries } from "./cache.js";
 import { askDone, doneShelf } from "./done.js";
+import { askPorts } from "./ports.js";
 
 const EXPANDED_WIDTH = 280;
 // The 20px icons with 11px either side.
@@ -28,6 +29,7 @@ export default class Tree extends View {
     cx.timer.every(15000, (cx) => this.refreshGit(cx));
     this.cacheExpiries = {};
     this.done = [];
+    this.ports = {};
     this.doneOpen = false;
     this.refreshEachMinute(cx);
     cx.timer.every(60000, (cx) => this.refreshEachMinute(cx)); // also redraws the relative times
@@ -58,7 +60,8 @@ export default class Tree extends View {
 
   refreshEachMinute(cx) {
     cx.spawn(async (cx) => {
-      [this.cacheExpiries, this.done] = await Promise.all([askCacheExpiries(agents()), askDone()]);
+      const tops = buildTree(this.git, this.closedFolders).tops.filter((c) => !c.machine).map((c) => c.top);
+      [this.cacheExpiries, this.done, this.ports] = await Promise.all([askCacheExpiries(agents()), askDone(), askPorts(tops)]);
       cx.notify();
     });
   }
@@ -138,10 +141,14 @@ function expandedView(tree, view) {
     .when(view.accounts.length > 0, (el) => el.child(accountsShelf(t, view.accounts, view.accountsOpen, (_e, cx) => { view.accountsOpen = !view.accountsOpen; cx.notify(); })));
 }
 
+function withPorts(row, view) {
+  return { ...row, ports: view.ports[row.top] ?? [] };
+}
+
 const ROW_VIEWS = {
   folder: (t, row, view) => folderRow(t, row, view),
-  agent: (t, row, view) => agentRow(t, row, view.cacheExpiries[row.agent.address]),
-  checkout: (t, row) => checkoutRow(t, row),
+  agent: (t, row, view) => agentRow(t, withPorts(row, view), view.cacheExpiries[row.agent.address]),
+  checkout: (t, row, view) => checkoutRow(t, withPorts(row, view)),
 };
 
 // t3code's project folder: a shelf header with a chevron; closed, it counts what it hides and
@@ -228,7 +235,8 @@ function card(t, row) {
 }
 
 // The second line: worktree or branch icon and the branch, the Linear issue and pull request
-// (each opens in the browser), the uncommitted changes, and the program's icon.
+// (each opens in the browser), the uncommitted changes, a globe when its servers listen on
+// ports, and the program's icon.
 function metaLine(t, row, program) {
   return h_flex().h(18).gap(6).items_center().text_size(11.5).text_color(t.dim)
     .child(svg(`${ICONS}/${row.worktree ? "git-branch" : "branch"}.svg`).size(11).flex_none())
@@ -237,6 +245,7 @@ function metaLine(t, row, program) {
     .when(Boolean(row.pullRequest), (el) => el.child(pullRequestChip(t, row)))
     .when(Boolean(row.pullRequest?.checks), (el) => el.child(checksMark(t, row)))
     .when(Boolean(row.changes), (el) => el.child(changes(t, row)))
+    .when(row.ports.length > 0, (el) => el.child(portsMark(t, row)))
     .when(Boolean(program?.icon), (el) => el.child(svg(program.icon).size(12).flex_none().text_color(program.color ?? t.dim)));
 }
 
@@ -254,6 +263,15 @@ function linkChip(t, id, label, color, url, tooltip) {
     .tooltip(tooltip).hover((s) => s.underline())
     .on_click((_e, cx) => { cx.stop_propagation(); cx.open_url(url); })
     .child(label);
+}
+
+// One globe however many ports; a click lists them at the pointer (the ports mod, sized by its
+// 31px rows and 5px padding), each opening on localhost.
+function portsMark(t, row) {
+  return div().id(`tree-ports-${row.key}`).flex_none().cursor_pointer()
+    .tooltip(`Listening on ${row.ports.map((p) => `:${p.port}`).join(" ")}`)
+    .on_click((_e, cx) => { cx.stop_propagation(); openOverlay({ mod: "ports", kind: "popup", width: 240, height: row.ports.length * 31 + 10, props: { ports: row.ports } }); })
+    .child(svg("mods/tree/globe.svg").size(11).text_color(t.muted));
 }
 
 // Only checks that need a look show: failing ones as a red cross, running ones as a dim dot.

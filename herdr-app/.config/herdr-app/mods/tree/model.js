@@ -126,6 +126,7 @@ function checkoutRow(key, name, checkout, space, list, target, { here, git }) {
 function checkoutFacts(checkout, spaceId, git) {
   const machine = spaces().find((s) => s.id === spaceId)?.machine ?? null;
   return {
+    top: machine ? null : checkout?.top ?? null, // ports are read on this machine only
     branch: checkout?.branch ?? null,
     worktree: Boolean(checkout?.linked),
     changes: checkout?.changes ?? null,
