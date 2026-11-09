@@ -139,18 +139,34 @@ function folderRow(t, row, view) {
       .child(svg(`${ICONS}/${row.closed ? "chevron-right" : "chevron-down"}.svg`).size(12).text_color(t.dim)));
 }
 
-// t3code's thread row: the title and its status, then the checkout it works in.
+// t3code's thread row: its status icon in the folder tile's column, where the collapsed sidebar
+// draws it, then the title and its time over the checkout it works in.
 function agentRow(t, row) {
   const { agent } = row;
   const recedes = agent.status === "idle" && !row.here;
-  return card(t, row)
-    .child(h_flex().h(22).gap(8).items_center()
-      .child(div().flex_1().min_w(0).truncate().text_size(13)
-        .text_color(recedes ? t.muted : t.foreground).when(!recedes, (d) => d.font_medium())
-        .child(agentTitle(agent)))
-      .when(agent.pinned, (el) => el.child(svg(`${ICONS}/pin.svg`).size(11).flex_none().text_color(t.dim)))
-      .child(statusSlot(t, agent)))
-    .child(metaLine(t, row, agent.program));
+  return rowSurface(t, row, h_flex().py(5).px(INSET).gap(10).items_center())
+    .child(agentIcon(t, row))
+    .child(v_flex().flex_1().min_w(0)
+      .child(h_flex().h(22).gap(8).items_center()
+        .child(div().flex_1().min_w(0).truncate().text_size(13)
+          .text_color(recedes ? t.muted : t.foreground).when(!recedes, (d) => d.font_medium())
+          .child(agentTitle(agent)))
+        .when(agent.pinned, (el) => el.child(svg(`${ICONS}/pin.svg`).size(11).flex_none().text_color(t.dim)))
+        .child(statusTime(t, agent)))
+      .child(metaLine(t, row, agent.program)));
+}
+
+function agentIcon(t, row) {
+  return h_flex().id(`tree-icon-${row.key}`).w(16).flex_none().justify_center()
+    .tooltip(bubbleTooltip(row.agent))
+    .child(BUBBLE_ICONS[row.agent.status](t, row.here));
+}
+
+// How long a working agent has worked, else how long an idle one has sat; the icon says the rest.
+function statusTime(t, agent) {
+  if (agent.status === "working") return div().flex_none().text_size(11.5).text_color(t.working).child(workingFor(agent));
+  if (agent.status === "idle") return div().flex_none().text_size(11.5).text_color(t.dim).child(sinceChange(agent));
+  return div();
 }
 
 // A checkout nobody's agent works in: a worktree space, or a folder a shell is in.
