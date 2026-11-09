@@ -6,10 +6,11 @@
 
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
-import { run, hc, exec, panes, focused, agents, props, openOverlay, closeOverlay, nextCommand, notify, theme, shared, setShared } from "herdr";
+import { run, hc, exec, home, panes, focused, agents, props, openOverlay, closeOverlay, nextCommand, notify, theme, shared, setShared } from "herdr";
 
 const DEFAULT_AGENT = ["claude"];
 const NAV_KEYS = { left: "ctrl+h", down: "ctrl+j", up: "ctrl+k", right: "ctrl+l" };
+const NVIM_KEYS = { left: "<C-h>", down: "<C-j>", up: "<C-k>", right: "<C-l>" };
 
 // What keys.json sends this mod, by command.
 const COMMANDS = {
@@ -140,9 +141,23 @@ function isModifierOnly(key) {
 async function navigate(direction) {
   const here = focused();
   if (!here?.terminal) return run("pane.go", { direction });
-  if (focusedProgram(here) === "nvim") return pressKey(here.terminal, NAV_KEYS[direction]);
-  run("pane.go", { direction });
+  if (focusedProgram(here) === "nvim") return pressNvimKey(here.terminal, direction);
+  await goPane(direction);
   if (focused()?.pane === here.pane) await pressKey(here.terminal, NAV_KEYS[direction]);
+}
+
+// run() only queues the command; focused() shows the move after the app's next turn.
+async function goPane(direction) {
+  run("pane.go", { direction });
+  await exec("true", []);
+}
+
+// Neovim listens on a socket named after its terminal (nvim/lua/plugins/smart-splits.lua): hc keys
+// waits until you stop typing (herdr-core #52), the socket doesn't. An nvim without one gets hc keys.
+async function pressNvimKey(terminal, direction) {
+  const socket = `${home()}/.local/state/nvim/hc/${terminal}.sock`;
+  const sent = await exec("nvim", ["--server", socket, "--remote-send", NVIM_KEYS[direction]]);
+  if (sent.code !== 0) await pressKey(terminal, NAV_KEYS[direction]);
 }
 
 function focusedProgram(here) {
