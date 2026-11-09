@@ -70,6 +70,29 @@ function spaceOf(path, all, on, spaceList, paneList) {
   })());
 }
 
+// The repo's worktree setup, kept where Paseo reads it (paseo.json's worktree.setup), or null.
+async function worktreeSetup(main, on) {
+  const r = await exec("cat", [`${main}/paseo.json`], { on });
+  if (r.code !== 0) return null;
+  try {
+    return JSON.parse(r.stdout).worktree?.setup || null;
+  } catch {
+    return null;
+  }
+}
+
+// The new space's first terminal runs the setup in a login shell (for its PATH), then what it
+// would have run: the given program, else a shell. A failed setup stays readable above it.
+function afterSetup(setup, argv) {
+  if (!setup) return argv;
+  const then = argv ? argv.map(shellQuote).join(" ") : '"$SHELL" -l';
+  return ["/bin/sh", "-c", 'exec "${SHELL:-/bin/zsh}" -lic "$1"', "sh", `${setup}; exec ${then}`];
+}
+
+function shellQuote(word) {
+  return `'${word.replace(/'/g, "'\\''")}'`;
+}
+
 async function git(cwd, args, on, timeout) {
   const r = await exec("git", args, { cwd, on, ...(timeout === undefined ? {} : { timeout }) });
   return { ok: r.code === 0, out: (r.stdout ?? "").trim(), err: (r.stderr ?? r.stdout ?? "").trim() };
@@ -205,8 +228,9 @@ export default class Worktree extends View {
     const r = await git(this.repo.top, add, this.on, 600_000);
     if (!r.ok) return r.err || "git worktree add failed.";
     const p = props();
+    const setup = await worktreeSetup(this.repo.main, this.on);
     // Leave spaces unnamed so they follow the checkout folder and nest under the repo.
-    run("space.new", { folder: path, machine: this.on, tab: p.tab, argv: p.argv });
+    run("space.new", { folder: path, machine: this.on, tab: p.tab, argv: afterSetup(setup, p.argv) });
     return "";
   }
 

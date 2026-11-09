@@ -2,8 +2,9 @@
 # The new-worktree dialog, typed into a real pane of a temporary server with the worktree
 # plugin linked: a new name makes a branch beside the repo with a new default-agent session,
 # an existing branch opens with only a shell, and the first line carries the agent the dialog
-# was opened from into a new branch named after its title. claude and codex are stubs, and so
-# is agent-fork.sh's helper: its session lookup is covered by agent-setup.sh.
+# was opened from into a new branch named after its title. The repo's paseo.json setup runs in
+# the new pane first, with or without a session; without paseo.json nothing runs. claude and
+# codex are stubs, and so is agent-fork.sh's helper: its session lookup is covered by agent-setup.sh.
 set -euo pipefail
 repo=$(cd "$(dirname "$0")/.." && pwd -P)
 scratch=$(mktemp -d /tmp/herdr-worktree.XXXXXX)
@@ -30,6 +31,8 @@ done
 git init -q -b main "$scratch/app"
 git -C "$scratch/app" -c user.name=test -c user.email=test@example.com commit -q --allow-empty -m init
 git -C "$scratch/app" branch feature/eng-1-existing
+# Logs "setup <folder>/", a path session_in never matches, into the same file as the sessions.
+jq -n --arg log "$scratch/sessions" '{worktree: {setup: "printf \"setup %s/\\n\" \"$PWD\" >> \($log)"}}' > "$scratch/app/paseo.json"
 touch "$scratch/sessions"
 PATH=$scratch/bin:$PATH herdr server > "$scratch/server.log" 2>&1 &
 server=$!
@@ -74,6 +77,9 @@ type_name() {
 }
 checkout_of() { git -C "$scratch/app" worktree list --porcelain | awk -v ref="refs/heads/$1" '/^worktree /{path=$2} $2==ref{print path}'; }
 session_in() { grep -F " $1 " "$scratch/sessions" | cut -d ' ' -f 1,3- || true; }
+setup_in() { grep -c -xF "setup $1/" "$scratch/sessions" || true; }
+# The line the setup or the session for FOLDER is on.
+line_of() { grep -n -F "$1 $2" "$scratch/sessions" | head -n 1 | cut -d: -f1; }
 # wait_for WANT COMMAND...: worktree creation and layout are asynchronous.
 wait_for() {
   local want=$1 got
@@ -104,6 +110,8 @@ herdr pane wait-output "$last_dialog" --match 'Creating worktree feature/eng-2-n
   { echo 'the dialog shows no progress once a branch is picked' >&2; exit 1; }
 wait_for "$scratch/app-eng-2-new-thing" checkout_of feature/eng-2-new-thing
 wait_for 'claude ' session_in "$scratch/app-eng-2-new-thing"
+[[ $(line_of setup "$scratch/app-eng-2-new-thing/") -lt $(line_of claude "$scratch/app-eng-2-new-thing ") ]] ||
+  { echo 'the setup did not run before the session' >&2; cat "$scratch/sessions" >&2; exit 1; }
 # The session is the new space's one pane.
 panes_of_checkout() {
   herdr workspace list | jq -r --arg path "$1" '.result.workspaces[] | select(.worktree.checkout_path == $path) | .workspace_id' |
@@ -118,15 +126,18 @@ dialog type_name existing alt+enter
 wait_for "$scratch/app-eng-1-existing" checkout_of feature/eng-1-existing
 sleep 1
 wait_for '' session_in "$scratch/app-eng-1-existing"
+wait_for 1 setup_in "$scratch/app-eng-1-existing"
+rm "$scratch/app/paseo.json"
 
 dialog type_name '' enter
 wait_for "$scratch/app-explore-sync-design" checkout_of feature/explore-sync-design
 wait_for 'claude --resume sess-123 --fork-session' session_in "$scratch/app-explore-sync-design"
+[[ $(setup_in "$scratch/app-explore-sync-design") == 0 ]] || { echo 'setup ran without paseo.json' >&2; exit 1; }
 # prefix+ctrl+g opens the dialog as a popup over the layout, which adds no pane.
 panes_before=$(herdr pane list | jq '.result.panes | length')
 herdr plugin action invoke worktree.new >/dev/null
 sleep 1
 [[ $(herdr pane list | jq '.result.panes | length') == "$panes_before" ]] ||
   { echo 'the dialog opened as a pane, not a popup' >&2; exit 1; }
-printf '%s\n' 'worktree dialog passed: new branch with a session, existing branch with a shell, agent carried over, esc closes, opens as a popup'
+printf '%s\n' 'worktree dialog passed: new branch with a session, existing branch with a shell, agent carried over, esc closes, opens as a popup, paseo setup first'
 
