@@ -233,16 +233,24 @@ function metaLine(t, row, program) {
   return h_flex().h(18).gap(6).items_center().text_size(11.5).text_color(t.dim)
     .child(svg(`${ICONS}/${row.worktree ? "git-branch" : "branch"}.svg`).size(11).flex_none())
     .child(div().flex_1().min_w(0).truncate().child(row.branch ?? "no branch"))
-    .when(Boolean(row.pullRequest?.issue), (el) => el.child(linkChip(t, `tree-issue-${row.key}`, row.pullRequest.issue.id, t.muted, row.pullRequest.issue.url)))
-    .when(Boolean(row.pullRequest), (el) => el.child(linkChip(t, `tree-pr-${row.key}`, `#${row.pullRequest.number}`, t[PULL_REQUEST_COLORS[row.pullRequest.state]] ?? t.dim, row.pullRequest.url)))
+    .when(Boolean(row.pullRequest?.issue), (el) => el.child(linkChip(t, `tree-issue-${row.key}`, row.pullRequest.issue.id, t.muted, row.pullRequest.issue.url, `Open ${row.pullRequest.issue.id} in Linear`)))
+    .when(Boolean(row.pullRequest), (el) => el.child(pullRequestChip(t, row)))
     .when(Boolean(row.pullRequest?.checks), (el) => el.child(checksMark(t, row)))
     .when(Boolean(row.changes), (el) => el.child(changes(t, row)))
     .when(Boolean(program?.icon), (el) => el.child(svg(program.icon).size(12).flex_none().text_color(program.color ?? t.dim)));
 }
 
-function linkChip(t, id, label, color, url) {
+// The pull request opens where it's reviewed: Linear's review when the repo is wired to it.
+function pullRequestChip(t, row) {
+  const { number, state, url, review } = row.pullRequest;
+  const where = review ? "Linear's review" : "GitHub";
+  return linkChip(t, `tree-pr-${row.key}`, `#${number}`, t[PULL_REQUEST_COLORS[state]] ?? t.dim, review ?? url, `Open #${number} in ${where}`);
+}
+
+// The row underneath lights on hover too, so a link underlines rather than taking a background.
+function linkChip(t, id, label, color, url, tooltip) {
   return div().id(id).flex_none().px(4).font_medium().text_color(color).cursor_pointer()
-    .hover((s) => s.bg(t.hover))
+    .tooltip(tooltip).hover((s) => s.underline())
     .on_click((_e, cx) => { cx.stop_propagation(); cx.open_url(url); })
     .child(label);
 }

@@ -69,19 +69,23 @@ async function askChanges(machine, top) {
   return added + removed > 0 ? { added, removed } : null;
 }
 
-// Linear's links come from its bot's comment on the pull request (as herdr's sidebar/open.sh).
+// Linear's links come from its bot's comment on the pull request (as herdr's sidebar/open.sh):
+// the issue, and the review Linear keeps of the pull request when the repo is wired to it.
 const LINEAR_ISSUE = /https:\/\/linear\.app\/[\w-]+\/issue\/([A-Za-z]+-\d+)[\w-]*/;
+const LINEAR_REVIEW = /https:\/\/linear\.app\/[\w-]+\/review\/[\w-]+/;
 
 async function askPullRequest(machine, top) {
   try {
     const r = await exec("gh", ["pr", "view", "--json", "number,state,isDraft,url,body,comments,statusCheckRollup"], { cwd: top, on: machine });
     if (r.code !== 0) return null;
     const pr = JSON.parse(r.stdout);
-    const issue = [pr.body ?? "", ...(pr.comments ?? []).map((c) => c.body ?? "")].join(" ").match(LINEAR_ISSUE);
+    const text = [pr.body ?? "", ...(pr.comments ?? []).map((c) => c.body ?? "")].join(" ");
+    const issue = text.match(LINEAR_ISSUE);
     return {
       number: pr.number,
       state: pr.state !== "OPEN" ? pr.state.toLowerCase() : pr.isDraft ? "draft" : "open",
       url: pr.url,
+      review: text.match(LINEAR_REVIEW)?.[0] ?? null,
       issue: issue ? { id: issue[1].toUpperCase(), url: issue[0] } : null,
       checks: checksOf(pr.statusCheckRollup ?? []),
     };
