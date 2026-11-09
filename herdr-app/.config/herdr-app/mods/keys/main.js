@@ -14,7 +14,7 @@ const NVIM_KEYS = { left: "<C-h>", down: "<C-j>", up: "<C-k>", right: "<C-l>" };
 
 // What keys.json sends this mod, by command.
 const COMMANDS = {
-  prefix: () => openOverlay({ mod: "keys", kind: "dialog", width: 300, height: 560, props: { prefix: true } }),
+  prefix: () => openOverlay({ mod: "keys", kind: "dialog", width: 980, height: 440, props: { prefix: true } }),
   "nav-left": () => navigate("left"),
   "nav-down": () => navigate("down"),
   "nav-up": () => navigate("up"),
@@ -25,60 +25,84 @@ const COMMANDS = {
   pressed: () => PREFIX[shared("keys.pressed")]?.[1](),
 };
 
-// The key after the prefix: [what it does, action]. Chords are keystrokes ("ctrl-g"); shifted
-// keys are the character they type ("X", "$"), so they hold on any keyboard layout.
-const PREFIX = {
-  c: ["new tab", () => run("tab.new")],
-  C: ["new tab with the agent", () => run("tab.new", { argv: DEFAULT_AGENT })],
-  n: ["next tab", () => run("tab.next")],
-  p: ["previous tab", () => run("tab.prev")],
-  ",": ["rename tab", () => run("tab.rename")],
-  T: ["rename tab", () => run("tab.rename")],
-  "&": ["close tab", () => run("tab.close")],
-  X: ["close tab", () => run("tab.close")],
-  "$": ["rename space", () => run("space.rename")],
-  W: ["rename space", () => run("space.rename")],
-  N: ["new space", () => run("space.new")],
-  D: ["close space", () => run("space.close")],
-  x: ["close pane", () => run("pane.close")],
-  z: ["zoom pane", () => run("pane.zoom")],
-  v: ["split right", () => run("pane.split", { direction: "right" })],
-  "|": ["split right", () => run("pane.split", { direction: "right" })],
-  "-": ["split down", () => run("pane.split", { direction: "down" })],
-  j:["pane down", () => run("pane.go", { direction: "down" })],
-  k: ["pane up", () => run("pane.go", { direction: "up" })],
-  l: ["pane right", () => run("pane.go", { direction: "right" })],
-  K: ["swap pane up", () => run("pane.swap", { direction: "up" })],
-  J: ["swap pane down", () => run("pane.swap", { direction: "down" })],
-  "{": ["swap pane left", () => run("pane.swap", { direction: "left" })],
-  "}": ["swap pane right", () => run("pane.swap", { direction: "right" })],
-  o: ["next pane", () => cyclePane()],
-  tab: ["next pane", () => cyclePane()],
-  ";": ["last pane", () => lastPane()],
-  s: ["go to…", () => run("mod.open", { name: "picker" })],
-  w: ["go to…", () => run("mod.open", { name: "picker" })],
-  "ctrl-o": ["go to…", () => run("mod.open", { name: "picker" })],
-  g: ["lazygit", () => popup(["lazygit"])],
-  b: ["Blueprint on/off", () => toggleBlueprint()],
-  r: ["review in hunk on/off", () => toggleHunk()],
-  R: ["ask the agent to answer the hunk notes", () => askToAnswerNotes()],
-  e: ["walk through the changes", () => run("mod.open", { name: "walkthrough" })],
-  t: ["past agent sessions", () => run("mod.open", { name: "atuin-threads" })],
-  h: ["GitHub dashboard", () => popup(["gh-dash"])],
-  "ctrl-g": ["new worktree", () => worktree("new", 460, 280)],
-  G: ["open worktree", () => worktree("open", 560, 480)],
-  "ctrl-x": ["remove worktree", () => worktree("remove", 440, 260)],
-  m: ["pin the agent", () => pinAgent()],
-  f: ["fork the agent into a pane", () => forkAgent("right")],
-  F: ["fork the agent into a tab", () => forkAgent("tab")],
-  "<": ["rename the Claude session", () => renameSession()],
-  i: ["open the pull request", () => openPullRequest()],
-  I: ["open the Linear issue", () => openIssue()],
-  "alt-m": ["toggle agent sounds", () => exec("peon", ["toggle"])],
-  "ctrl-s": ["settings", () => run("app.settings")],
-  "?": ["keys", () => run("app.help")],
+// The keys after the prefix, in the groups the popup shows: key → [what it does, action]. Chords
+// are keystrokes ("ctrl-g"); shifted keys are the character they type ("X", "$"), so they hold
+// on any keyboard layout. Keys sharing a label show as one row.
+const PREFIX_GROUPS = {
+  Tabs: {
+    c: ["new", () => run("tab.new")],
+    C: ["new with the agent", () => run("tab.new", { argv: DEFAULT_AGENT })],
+    n: ["next", () => run("tab.next")],
+    p: ["previous", () => run("tab.prev")],
+    ",": ["rename", () => run("tab.rename")],
+    T: ["rename", () => run("tab.rename")],
+    "&": ["close", () => run("tab.close")],
+    X: ["close", () => run("tab.close")],
+    ...tabNumberKeys(),
+  },
+  Spaces: {
+    s: ["go to…", () => run("mod.open", { name: "picker" })],
+    w: ["go to…", () => run("mod.open", { name: "picker" })],
+    "ctrl-o": ["go to…", () => run("mod.open", { name: "picker" })],
+    N: ["new", () => run("space.new")],
+    "$": ["rename", () => run("space.rename")],
+    W: ["rename", () => run("space.rename")],
+    D: ["close", () => run("space.close")],
+    "ctrl-g": ["new worktree", () => worktree("new", 460, 280)],
+    G: ["open worktree", () => worktree("open", 560, 480)],
+    "ctrl-x": ["remove worktree", () => worktree("remove", 440, 260)],
+  },
+  Panes: {
+    v: ["split right", () => run("pane.split", { direction: "right" })],
+    "|": ["split right", () => run("pane.split", { direction: "right" })],
+    "-": ["split down", () => run("pane.split", { direction: "down" })],
+    j: ["go down", () => run("pane.go", { direction: "down" })],
+    k: ["go up", () => run("pane.go", { direction: "up" })],
+    l: ["go right", () => run("pane.go", { direction: "right" })],
+    o: ["next", () => cyclePane()],
+    tab: ["next", () => cyclePane()],
+    ";": ["last", () => lastPane()],
+    K: ["swap up", () => run("pane.swap", { direction: "up" })],
+    J: ["swap down", () => run("pane.swap", { direction: "down" })],
+    "{": ["swap left", () => run("pane.swap", { direction: "left" })],
+    "}": ["swap right", () => run("pane.swap", { direction: "right" })],
+    z: ["zoom", () => run("pane.zoom")],
+    x: ["close", () => run("pane.close")],
+  },
+  Agent: {
+    m: ["pin", () => pinAgent()],
+    f: ["fork into a pane", () => forkAgent("right")],
+    F: ["fork into a tab", () => forkAgent("tab")],
+    "<": ["rename the session", () => renameSession()],
+    t: ["past sessions", () => run("mod.open", { name: "atuin-threads" })],
+    "alt-m": ["sounds on/off", () => exec("peon", ["toggle"])],
+  },
+  Review: {
+    r: ["hunk on/off", () => toggleHunk()],
+    R: ["answer hunk notes", () => askToAnswerNotes()],
+    e: ["walkthrough", () => run("mod.open", { name: "walkthrough" })],
+    b: ["Blueprint on/off", () => toggleBlueprint()],
+  },
+  "Git & links": {
+    g: ["lazygit", () => popup(["lazygit"])],
+    h: ["GitHub dashboard", () => popup(["gh-dash"])],
+    i: ["pull request", () => openPullRequest()],
+    I: ["Linear issue", () => openIssue()],
+  },
+  App: {
+    "ctrl-s": ["settings", () => run("app.settings")],
+    "?": ["all keys", () => run("app.help")],
+  },
 };
-for (let n = 1; n <= 9; n++) PREFIX[String(n)] = [`tab ${n}`, () => run("tab.select", { index: n })];
+// The popup's columns, top to bottom, by group.
+const PREFIX_COLUMNS = [["Tabs", "Spaces"], ["Panes"], ["Agent", "Review"], ["Git & links", "App"]];
+const PREFIX = Object.assign({}, ...Object.values(PREFIX_GROUPS));
+
+function tabNumberKeys() {
+  const keys = {};
+  for (let n = 1; n <= 9; n++) keys[String(n)] = ["go to tab n", () => run("tab.select", { index: n })];
+  return keys;
+}
 
 export default class Keys extends View {
   init(_props, cx) {
@@ -99,19 +123,25 @@ export default class Keys extends View {
 async function receiveCommands(cx) {
   for (;;) {
     const command = await nextCommand();
-    await COMMANDS[command]?.();
+    await runCommand(command);
     cx.notify();
   }
 }
 
+// One failing command must not end the loop: every later key would go unanswered.
+async function runCommand(command) {
+  try {
+    await COMMANDS[command]?.();
+  } catch (error) {
+    notify({ title: `keys: ${command} failed`, body: String(error?.message ?? error), level: "error" });
+  }
+}
+
+// which-key's look: every group at once, in columns, the keys in the accent colour.
 function prefixPopup(handle) {
   const t = theme();
   const close = () => closeOverlay(props().overlay);
-  const rows = Object.entries(PREFIX).map(([key, [label]]) =>
-    h_flex().gap(10).h(20).items_center()
-      .child(div().w(56).text_color(t.accent).font_semibold().child(key))
-      .child(div().flex_1().truncate().text_color(t.muted).child(label)));
-  return v_flex().id("prefix").track_focus(handle).size_full().p(12).gap(2).bg(t.popover).text_size(12)
+  return v_flex().id("prefix").track_focus(handle).size_full().p(14).gap(10).bg(t.popover).text_size(12)
     .on_key_down((event, cx) => {
       cx.stop_propagation();
       if (isModifierOnly(event.key)) return;
@@ -119,8 +149,27 @@ function prefixPopup(handle) {
       close();
       if (key) actOnPrefixKey(key);
     })
-    .child(div().pb(6).text_color(t.foreground).font_semibold().child("ctrl+\\  then…"))
-    .child(v_flex().flex_1().min_h(0).overflow_y_scrollbar().children(rows));
+    .child(div().text_color(t.foreground).font_semibold().child("ctrl+\\  then…"))
+    .child(h_flex().items_start().gap(24).children(PREFIX_COLUMNS.map((groups) => prefixColumn(groups, t))));
+}
+
+function prefixColumn(groups, t) {
+  return v_flex().flex_1().min_w(0).gap(10).children(groups.map((name) => prefixGroup(name, t)));
+}
+
+function prefixGroup(name, t) {
+  const rows = prefixRows(PREFIX_GROUPS[name]).map(([label, keys]) =>
+    h_flex().h(20).items_center().gap(10)
+      .child(div().w(72).flex_none().truncate().text_color(t.accent).font_semibold().child(keys))
+      .child(div().flex_1().min_w(0).truncate().text_color(t.muted).child(label)));
+  return v_flex().gap(2).child(div().h(18).text_size(11).font_medium().text_color(t.dim).child(name)).children(rows);
+}
+
+// [label, keys] per row: keys sharing a label join, and a long run shows as its ends ("1…9").
+function prefixRows(group) {
+  const keysByLabel = new Map();
+  for (const [key, [label]] of Object.entries(group)) keysByLabel.set(label, [...(keysByLabel.get(label) ?? []), key]);
+  return [...keysByLabel].map(([label, keys]) => [label, keys.length > 3 ? `${keys[0]}…${keys.at(-1)}` : keys.join(" ")]);
 }
 
 function prefixKey(event) {
@@ -253,16 +302,30 @@ async function permissionMode(sessionId) {
 // with c, and the agent's replies, show beside the code while its window stays open.
 const HUNK_ARGV = ["hunk", "diff", "--watch", "--transparent-bg", "--agent-notes"];
 
-function toggleHunk() {
+async function toggleHunk() {
   const shown = hunkPane();
   if (shown) run("pane.close", { pane: shown.pane });
-  else openHunk();
+  else await openHunk();
 }
 
-function openHunk() {
+async function openHunk() {
   const shown = hunkPane();
   if (shown) run("pane.focus", { pane: shown.pane });
-  else run("pane.split", { direction: "right", argv: HUNK_ARGV });
+  else run("pane.split", { direction: "right", argv: [...HUNK_ARGV, ...(await reviewBase(focused()?.cwd))] });
+}
+
+// hunk diffs the working tree against where the branch left origin's main, so committed and
+// uncommitted work show together; on a clean main with nothing unpushed, the last commit.
+const REVIEW_BASE = [
+  'base=$(git merge-base origin/HEAD HEAD) || exit 0',
+  'if [ "$base" = "$(git rev-parse HEAD)" ] && [ -z "$(git status --porcelain)" ]; then base=HEAD~1; fi',
+  'echo "$base"',
+].join("\n");
+
+async function reviewBase(cwd) {
+  const found = await exec("sh", ["-c", REVIEW_BASE], { cwd });
+  const base = found.stdout.trim();
+  return base ? [base] : [];
 }
 
 function hunkPane() {
@@ -274,9 +337,9 @@ function hunkPane() {
 const ANSWER_NOTES = [
   "Answer my review notes in the live Hunk window for this repository.",
   "Read them with `hunk session comment list --repo . --type user --json`,",
-  "then reply to each one in Hunk with `hunk session comment apply --repo . --stdin --focus`, one item per note on its own line",
-  "({\"filePath\": <its file>, \"newLine\": <first of its newRange> (or \"oldLine\" for a removed line), \"summary\": <your answer>, \"author\": \"Claude\"};",
-  "this hunk has no replyTo). Keep each answer to one or two plain sentences: no rationale, no quoting the note;",
+  "then reply in each note's own thread with `hunk session comment apply --repo . --stdin --focus`, one item per note",
+  "({\"replyTo\": <its noteId>, \"summary\": <your answer>, \"author\": \"Claude\"}).",
+  "Keep each answer to one or two plain sentences: no rationale, no quoting the note;",
   "change code only where a note asks for it.",
 ].join(" ");
 
