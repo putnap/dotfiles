@@ -93,15 +93,55 @@ function shellQuote(word) {
   return `'${word.replace(/'/g, "'\\''")}'`;
 }
 
-// What the Done shelf keeps of a removed worktree (one line of herdr's done.jsonl, which the
-// herdr TUI's close-space.sh writes too): read before its space closes, its pull request asked
-// meanwhile.
-async function doneRecord(repo, space, on) {
+// What removing a worktree does to its branch, as herdr's close dialog does it: the local branch
+// goes once every commit on it is on a remote, the remote one too once its pull request merged.
+// null for a detached checkout.
+async function branchFate(repo, on) {
+  const head = await git(repo.top, ["symbolic-ref", "--short", "-q", "HEAD"], on);
+  if (!head.ok || !head.out) return null;
+  const name = head.out;
+  const unpushed = await git(repo.top, ["rev-list", "--count", name, "--not", "--remotes"], on);
+  const remote = (await git(repo.main, ["config", "--get", `branch.${name}.remote`], on)).out || "origin";
+  const merge = (await git(repo.main, ["config", "--get", `branch.${name}.merge`], on)).out || `refs/heads/${name}`;
+  const remoteBranch = merge.replace(/^refs\/heads\//, "");
+  const onRemote = (await git(repo.main, ["show-ref", "--verify", "--quiet", `refs/remotes/${remote}/${remoteBranch}`], on)).ok;
+  const pr = await exec("gh", ["pr", "view", name, "--json", "number,url,state"], { cwd: repo.main, on });
+  const pullRequest = pr.code === 0 ? JSON.parse(pr.stdout) : null;
+  return {
+    name,
+    unpushed: Number(unpushed.out) || 0,
+    remote: onRemote ? { name: remote, branch: remoteBranch } : null,
+    merged: pullRequest?.state === "MERGED",
+    pullRequest,
+  };
+}
+
+// What the dialog says happens to the branch.
+function branchNote(fate) {
+  if (!fate) return "";
+  if (fate.unpushed > 0) return ` Keeps ${fate.name}: ${fate.unpushed === 1 ? "a commit is" : `${fate.unpushed} commits are`} on no remote.`;
+  if (!fate.remote) return ` Deletes ${fate.name}.`;
+  const remote = `${fate.remote.name}/${fate.remote.branch}`;
+  if (fate.merged) return ` Deletes ${fate.name} and, its pull request merged, ${remote}.`;
+  return ` Deletes ${fate.name}; ${remote} stays until its pull request merges.`;
+}
+
+async function deleteBranch(repo, fate, on) {
+  if (!fate || fate.unpushed > 0) return "";
+  // -D: a squash-merged branch never counts as merged to git; its commits are on the remote.
+  const local = await git(repo.main, ["branch", "-D", fate.name], on);
+  if (!local.ok) return local.err || `git could not delete ${fate.name}.`;
+  if (!fate.remote || !fate.merged) return "";
+  const pushed = await git(repo.main, ["push", fate.remote.name, "--delete", fate.remote.branch], on, 60_000);
+  return pushed.ok ? "" : pushed.err || `git could not delete ${fate.remote.name}/${fate.remote.branch}.`;
+}
+
+// What the Done shelf keeps of a removed worktree: one line of herdr's done.jsonl, which the herdr
+// TUI's close-space.sh writes too. Agent titles are read while its space is still open.
+function doneRecord(repo, space, fate) {
   const titles = agents().filter((a) => a.space === space.id).map((a) => a.title).filter(Boolean);
-  const branch = await git(repo.top, ["symbolic-ref", "--short", "-q", "HEAD"], on);
-  const name = branch.ok ? branch.out : null;
-  const pr = name ? await exec("gh", ["pr", "view", name, "--json", "number,url"], { cwd: repo.main, on }) : null;
-  return { at: Date.now(), repo: repo.main, branch: name, titles, pull_request: pr?.code === 0 ? JSON.parse(pr.stdout) : null };
+  const pr = fate?.pullRequest;
+  return { at: Date.now(), repo: repo.main, branch: fate?.name ?? null, titles, pull_request: pr ? { number: pr.number, url: pr.url } : null };
 }
 
 function saveDone(record) {
@@ -182,6 +222,7 @@ export default class Worktree extends View {
     this.repo = undefined; // undefined: looking, null: not in git
     this.dirty = false;
     this.unpushed = [];
+    this.branch = null;
     this.handle = cx.focus_handle();
     if (props()?.action === "remove") this.handle.focus();
     cx.spawn(async (cx) => {
@@ -199,6 +240,7 @@ export default class Worktree extends View {
         if (repo && props().action === "remove") {
           this.dirty = (await git(repo.top, ["--no-optional-locks", "-c", "core.fsmonitor=false", "status", "--porcelain"], this.on)).out !== "";
           this.unpushed = (await submodules(repo.top, this.on)).unpushed;
+          this.branch = await branchFate(repo, this.on);
         }
         if (repo && this.opening) this.list = await checkouts(repo, this.on);
         this.repo = repo;
@@ -264,7 +306,7 @@ export default class Worktree extends View {
 
   async remove() {
     const s = this.space();
-    const done = doneRecord(this.repo, s, this.on);
+    const done = doneRecord(this.repo, s, this.branch);
     const status = await git(this.repo.top, ["--no-optional-locks", "-c", "core.fsmonitor=false", "status", "--porcelain"], this.on);
     if (!status.ok) return status.err || "git status failed.";
     // git refuses a worktree with submodules unless forced, because their
@@ -280,8 +322,8 @@ export default class Worktree extends View {
     const force = this.dirty || mods.length > 0;
     const r = await git(this.repo.main, ["worktree", "remove", ...(force ? ["--force"] : []), this.repo.top], this.on, 600_000);
     if (!r.ok) return r.err || "git worktree remove failed.";
-    await saveDone(await done);
-    return "";
+    await saveDone(done);
+    return deleteBranch(this.repo, this.branch, this.on);
   }
 
   key(e, cx) {
@@ -378,7 +420,7 @@ export default class Worktree extends View {
           : remove
             ? !r.linked
               ? "This is the repository's main checkout, not a worktree."
-              : `Closes the space and deletes ${tilde(r.top, this.userHome)}. The branch stays.`
+              : `Closes the space and deletes ${tilde(r.top, this.userHome)}.${branchNote(this.branch)}`
             : `A new space on a checkout beside ${r.name}'s other worktrees. A branch that exists is checked out; a new one starts from here.`;
     const blocked = !r || (remove && !r.linked);
     return v_flex()
