@@ -7,7 +7,7 @@ const PULL_REQUEST_SECONDS = 180;
 
 export class Git {
   constructor() {
-    this.checkouts = {}; // "machine:folder" -> { top, repo, linked, branch, changes } | null outside git
+    this.checkouts = {}; // "machine:folder" -> { top, repo, linked, branch, changes, drift } | null outside git
     this.pullRequests = {}; // "machine:top" -> { number, state, url, issue } | null without one
     this.askedAt = {};
   }
@@ -55,7 +55,8 @@ async function askCheckout(machine, folder) {
     const r = await exec("git", ["rev-parse", "--path-format=absolute", "--show-toplevel", "--git-common-dir", "--abbrev-ref", "HEAD"], { cwd: folder, on: machine });
     if (r.code !== 0) return null;
     const [top, repo, branch] = r.stdout.trim().split("\n");
-    return { top, repo, linked: repo !== `${top}/.git`, branch: branch === "HEAD" ? null : branch, changes: await askChanges(machine, top) };
+    const [changes, drift] = await Promise.all([askChanges(machine, top), askDrift(machine, top)]);
+    return { top, repo, linked: repo !== `${top}/.git`, branch: branch === "HEAD" ? null : branch, changes, drift };
   } catch {
     return null;
   }
@@ -67,6 +68,15 @@ async function askChanges(machine, top) {
   const added = Number(r.stdout.match(/(\d+) insertion/)?.[1] ?? 0);
   const removed = Number(r.stdout.match(/(\d+) deletion/)?.[1] ?? 0);
   return added + removed > 0 ? { added, removed } : null;
+}
+
+// Commits ahead of and behind origin's main (origin/HEAD), as herdr's git_status, as of the last
+// fetch; null when level with it or without one.
+async function askDrift(machine, top) {
+  const r = await exec("git", ["rev-list", "--left-right", "--count", "origin/HEAD...HEAD"], { cwd: top, on: machine });
+  if (r.code !== 0) return null;
+  const [behind, ahead] = r.stdout.trim().split(/\s+/).map(Number);
+  return ahead + behind > 0 ? { ahead, behind } : null;
 }
 
 // Linear's links come from its bot's comment on the pull request (as herdr's sidebar/open.sh):

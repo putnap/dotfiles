@@ -21,6 +21,7 @@ const COMMANDS = {
   "nav-right": () => navigate("right"),
   "break-pane": () => breakPane(),
   "hunk-open": () => openHunk(),
+  lazygit: () => popup(["lazygit"]),
   pressed: () => PREFIX[shared("keys.pressed")]?.[1](),
 };
 

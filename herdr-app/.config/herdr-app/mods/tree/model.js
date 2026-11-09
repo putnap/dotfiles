@@ -81,6 +81,7 @@ function folderRows({ owner, worktrees }, closed, context) {
   const hiddenAgents = closed ? inside.filter((r) => r.kind === "agent").map((r) => r.agent) : [];
   const header = {
     kind: "folder", key: `space:${owner.space.id}`, space: owner.space,
+    drift: owner.checkout?.drift ?? null,
     stop: closed || inside.length === 0, closed,
     hiddenCount: hiddenAgents.length,
     dot: mostUrgent(hiddenAgents),

@@ -151,8 +151,8 @@ const ROW_VIEWS = {
   checkout: (t, row, view) => checkoutRow(t, withPorts(row, view)),
 };
 
-// t3code's project folder: a shelf header with a chevron; closed, it counts what it hides and
-// shows the most urgent of them as a dot.
+// t3code's project folder: a shelf header with a chevron and its checkout's commits ahead of and
+// behind main; closed, it counts what it hides and shows the most urgent of them as a dot.
 function folderRow(t, row, view) {
   const toggle = (_e, cx) => {
     cx.stop_propagation();
@@ -164,6 +164,7 @@ function folderRow(t, row, view) {
     .child(spaceTile(t, row.space, 16))
     .child(div().flex_1().min_w(0).truncate().text_size(13.5).font_medium()
       .text_color(row.focused ? t.foreground : t.muted).child(row.space.name))
+    .when(Boolean(row.drift), (el) => el.child(driftMark(t, row)))
     .when(Boolean(row.dot), (el) => el.child(div().size(6).flex_none().rounded(3).bg(t[STATUS[row.dot].color])))
     .when(row.hiddenCount > 0, (el) => el.child(div().flex_none().text_size(11.5).text_color(t.dim).child(String(row.hiddenCount))))
     .child(h_flex().id(`tree-chevron-${row.space.id}`).size(20).flex_none().items_center().justify_center()
@@ -295,6 +296,20 @@ function pullRequestMark(t, row) {
     .on_click((_e, cx) => { cx.stop_propagation(); cx.open_url(review ?? url); })
     .child(svg("mods/tree/git-pull-request.svg").size(11).text_color(color));
 }
+
+// ↑3 ↓12 as herdr's git_status, each side only when it has commits: ahead of main, behind it.
+// A click opens lazygit in the space, as ctrl+\ g does there.
+function driftMark(t, row) {
+  const { ahead, behind } = row.drift;
+  const sides = [ahead ? `↑${ahead}` : null, behind ? `↓${behind}` : null].filter(Boolean);
+  const facts = [ahead ? `${ahead} ahead of main` : null, behind ? `${behind} behind` : null, "as of the last fetch", LAZYGIT_TOOLTIP];
+  return div().id(`tree-drift-${row.key}`).flex_none().text_size(11.5).text_color(t.muted).cursor_pointer()
+    .hover((s) => s.underline()).tooltip(facts.filter(Boolean).join(" · "))
+    .on_click((_e, cx) => { cx.stop_propagation(); land(row); run("keys.lazygit"); })
+    .child(sides.join(" "));
+}
+
+const LAZYGIT_TOOLTIP = "lazygit  ⌃\\ g";
 
 // One globe however many ports; a click lists them at the pointer (the ports mod, sized by its
 // 31px rows and 5px padding), each opening on localhost.
