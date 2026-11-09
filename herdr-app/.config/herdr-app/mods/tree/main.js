@@ -4,7 +4,7 @@
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
 import { run, spaces, focused, theme, nextCommand, setAgentOrder, keys, agents, openOverlay } from "herdr";
-import { Git } from "./git.js";
+import { Git, ticketOf } from "./git.js";
 import { buildTree, nextStop, latestAttention } from "./model.js";
 import { spaceColor, publishSpaceColors } from "./colors.js";
 import { askAccounts, accountsShelf } from "./accounts.js";
@@ -180,12 +180,13 @@ function agentRow(t, row, cacheExpiresAt) {
     .child(agentIcon(t, row))
     .child(v_flex().flex_1().min_w(0)
       .child(h_flex().h(22).gap(8).items_center()
-        .child(div().flex_1().min_w(0).truncate().text_size(13)
+        .child(div().id(`tree-title-${row.key}`).flex_1().min_w(0).truncate().text_size(13)
           .text_color(recedes ? t.muted : t.foreground).when(!recedes, (d) => d.font_medium())
-          .child(agentTitle(agent)))
+          .tooltip(`${agentTitle(agent)} · ${agent.space_name} › ${agent.tab_name}`)
+          .child(withoutTicket(agentTitle(agent), row.branch)))
         .when(agent.pinned, (el) => el.child(svg(`${ICONS}/pin.svg`).size(11).flex_none().text_color(t.dim)))
         .child(statusTime(t, agent, cacheExpiresAt)))
-      .child(metaLine(t, row, agent.program)));
+      .child(metaLine(t, row)));
 }
 
 function agentIcon(t, row) {
@@ -198,11 +199,28 @@ function agentIcon(t, row) {
 // A cache about to expire takes the slot: replying after it rewrites the whole context.
 function statusTime(t, agent, cacheExpiresAt) {
   const expiring = minutesUntil(cacheExpiresAt);
-  if (agent.status === "working") return div().flex_none().text_size(11.5).text_color(t.working).child(workingFor(agent));
+  if (agent.status === "working") return timer(t, agent, t.working, "Working since", tabOf(agent)?.working_since, workingFor(agent));
   if (expiring !== null) return cacheMark(t, agent, expiring);
-  if (agent.status === "idle") return div().flex_none().text_size(11.5).text_color(t.dim).child(sinceChange(agent));
+  if (agent.status === "idle") return timer(t, agent, t.dim, "Idle since", tabOf(agent)?.changed_at, sinceChange(agent));
   return div();
 }
+
+// A time with the clock time it counts from on hover: "Working since 14:32".
+function timer(t, agent, color, label, since, text) {
+  return div().id(`tree-time-${agent.address}`).flex_none().text_size(11.5).text_color(color)
+    .when(Boolean(since), (el) => el.tooltip(`${label} ${clockTime(since)}`))
+    .child(text);
+}
+
+// 14:32 today, else "Nov 8 14:32".
+function clockTime(at) {
+  const date = new Date(at);
+  const time = `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+  if (date.toDateString() === new Date().toDateString()) return time;
+  return `${MONTHS[date.getMonth()]} ${date.getDate()} ${time}`;
+}
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 const CACHE_WARNING_MINUTES = 10;
 
@@ -226,7 +244,7 @@ function checkoutRow(t, row) {
       .child(div().flex_1().min_w(0).truncate().text_size(13)
         .text_color(row.focused ? t.foreground : t.muted).when(row.focused, (d) => d.font_medium())
         .child(row.name)))
-    .child(metaLine(t, row, null));
+    .child(metaLine(t, row));
 }
 
 function card(t, row) {
@@ -234,76 +252,80 @@ function card(t, row) {
   return rowSurface(t, row, v_flex().py(5).pl(INSET + 16 + 10).pr(INSET).justify_center());
 }
 
-// The second line: worktree or branch icon and the branch, the Linear issue and pull request
-// (each opens in the browser), the uncommitted changes, a globe when its servers listen on
-// ports, and the program's icon.
-function metaLine(t, row, program) {
-  return h_flex().h(18).gap(6).items_center().text_size(11.5).text_color(t.dim)
+// The second line: one name for the work (its ticket, else its branch's last segment) and, on
+// the right, icons whose colour says the state and whose hover says the detail: the pull request,
+// uncommitted changes, and a globe when its servers listen on ports.
+function metaLine(t, row) {
+  return h_flex().h(18).gap(8).items_center().text_size(11.5).text_color(t.dim)
     .child(svg(`${ICONS}/${row.worktree ? "git-branch" : "branch"}.svg`).size(11).flex_none())
-    .child(div().flex_1().min_w(0).truncate().child(row.branch ?? "no branch"))
-    .when(Boolean(row.pullRequest?.issue), (el) => el.child(linkChip(t, `tree-issue-${row.key}`, row.pullRequest.issue.id, t.muted, row.pullRequest.issue.url, `Open ${row.pullRequest.issue.id} in Linear`)))
-    .when(Boolean(row.pullRequest), (el) => el.child(pullRequestChip(t, row)))
-    .when(Boolean(row.pullRequest?.checks), (el) => el.child(checksMark(t, row)))
-    .when(Boolean(row.changes), (el) => el.child(changes(t, row)))
-    .when(row.ports.length > 0, (el) => el.child(portsMark(t, row)))
-    .when(Boolean(program?.icon), (el) => el.child(svg(program.icon).size(12).flex_none().text_color(program.color ?? t.dim)));
+    .child(workName(t, row))
+    .child(h_flex().flex_none().gap(1).mr(-4)
+      .when(Boolean(row.pullRequest), (el) => el.child(pullRequestMark(t, row)))
+      .when(Boolean(row.changes), (el) => el.child(changesMark(t, row)))
+      .when(row.ports.length > 0, (el) => el.child(portsMark(t, row))));
 }
 
-// The pull request opens where it's reviewed: Linear's review when the repo is wired to it.
-function pullRequestChip(t, row) {
-  const { number, state, url, review } = row.pullRequest;
-  const where = review ? "Linear's review" : "GitHub";
-  return linkChip(t, `tree-pr-${row.key}`, `#${number}`, t[PULL_REQUEST_COLORS[state]] ?? t.dim, review ?? url, `Open #${number} in ${where}`);
+// An icon's hit box: wider than the icon and lit on hover. Themes paint hover, selected and border
+// alike, so the row's own hover hides them; input is a step lighter. The trailing -4px margin lines
+// the last icon up with the time above.
+function iconButton(t, id, tooltip) {
+  return h_flex().id(id).size(18).flex_none().rounded(4).items_center().justify_center().cursor_pointer()
+    .hover((s) => s.bg(t.input)).tooltip(tooltip);
 }
 
-// The row underneath lights on hover too, so a link underlines rather than taking a background,
-// and takes no padding of its own: the line's gap alone spaces its labels.
-function linkChip(t, id, label, color, url, tooltip) {
-  return div().id(id).flex_none().font_medium().text_color(color).cursor_pointer()
-    .tooltip(tooltip).hover((s) => s.underline())
-    .on_click((_e, cx) => { cx.stop_propagation(); cx.open_url(url); })
-    .child(label);
+// The ticket opens its Linear issue when the pull request links one, else a click copies the
+// branch. Only the text takes the click; the space after it still lands on the row.
+function workName(t, row) {
+  const line = h_flex().flex_1().min_w(0);
+  if (!row.branch) return line.child(div().truncate().child("no branch"));
+  const issue = row.pullRequest?.issue;
+  const name = div().id(`tree-name-${row.key}`).min_w(0).truncate().text_color(t.muted).cursor_pointer().hover((s) => s.underline())
+    .child(ticketOf(row.branch));
+  if (issue) return line.child(name.tooltip(`${row.branch} · open ${issue.id} in Linear`).on_click((_e, cx) => { cx.stop_propagation(); cx.open_url(issue.url); }));
+  return line.child(name.tooltip(`${row.branch} · click to copy`).on_click((_e, cx) => { cx.stop_propagation(); cx.write_to_clipboard(row.branch); }));
+}
+
+// One icon in its state's colour, red while checks fail; it opens where the pull request is
+// reviewed: Linear's review when the repo is wired to it, else GitHub.
+function pullRequestMark(t, row) {
+  const { number, state, url, review, checks } = row.pullRequest;
+  const color = checks === "failing" ? t.ansi1 : t[PULL_REQUEST_COLORS[state]] ?? t.dim;
+  const facts = [`#${number} ${state}`, checks ? `checks ${checks}` : null, `open in ${review ? "Linear" : "GitHub"}`];
+  return iconButton(t, `tree-pr-${row.key}`, facts.filter(Boolean).join(" · "))
+    .on_click((_e, cx) => { cx.stop_propagation(); cx.open_url(review ?? url); })
+    .child(svg("mods/tree/git-pull-request.svg").size(11).text_color(color));
 }
 
 // One globe however many ports; a click lists them at the pointer (the ports mod, sized by its
 // 31px rows and 5px padding), each opening on localhost.
 function portsMark(t, row) {
-  return div().id(`tree-ports-${row.key}`).flex_none().cursor_pointer()
-    .tooltip(`Listening on ${row.ports.map((p) => `:${p.port}`).join(" ")}`)
+  return iconButton(t, `tree-ports-${row.key}`, `Listening on ${row.ports.map((p) => `:${p.port}`).join(" ")}`)
     .on_click((_e, cx) => { cx.stop_propagation(); openOverlay({ mod: "ports", kind: "popup", width: 240, height: row.ports.length * 31 + 10, props: { ports: row.ports } }); })
     .child(svg("mods/tree/globe.svg").size(11).text_color(t.muted));
 }
 
-// Only checks that need a look show: failing ones as a red cross, running ones as a dim dot.
-const CHECK_MARKS = {
-  failing: { tooltip: "Checks failing", mark: (t) => div().text_color(t.ansi1).font_bold().child("✗") },
-  running: { tooltip: "Checks running", mark: (t) => div().size(5).rounded(3).bg(t.dim) },
-};
-
-function checksMark(t, row) {
-  const { checks, url } = row.pullRequest;
-  return h_flex().id(`tree-checks-${row.key}`).flex_none().h(14).items_center().cursor_pointer()
-    .tooltip(CHECK_MARKS[checks].tooltip)
-    .on_click((_e, cx) => { cx.stop_propagation(); cx.open_url(`${url}/checks`); })
-    .child(CHECK_MARKS[checks].mark(t));
-}
-
-// A checkout's uncommitted changes, which open Reviewer on them: where they show is where to look.
-function changes(t, row) {
+// Uncommitted changes as an amber dot, counted on hover; a click opens Reviewer on them.
+function changesMark(t, row) {
   const { added, removed } = row.changes;
-  return h_flex().id(`tree-changes-${row.key}`).flex_none().gap(3).cursor_pointer()
-    .hover((s) => s.underline()).tooltip(REVIEW_TOOLTIP)
+  return iconButton(t, `tree-changes-${row.key}`, `+${added} −${removed} · ${REVIEW_TOOLTIP}`)
     .on_click((_e, cx) => { cx.stop_propagation(); land(row); showReview(); })
-    .child(div().text_color(t.ansi2).child(`+${added}`))
-    .child(div().text_color(t.ansi1).child(`−${removed}`));
+    .child(div().size(6).rounded(3).bg(t.ansi3));
 }
 
 // The keys mod's prefix popup binds it (ctrl+\ r), which keys() can't see.
-const REVIEW_TOOLTIP = "Review these changes in hunk  ⌃\\ r";
+const REVIEW_TOOLTIP = "review in hunk  ⌃\\ r";
 
 // Reviews open in hunk, in a pane beside the tab's (the keys mod's hunk-open).
 function showReview() {
   run("keys.hunk-open");
+}
+
+// "ENG-3957 per-product sends" over a branch on ENG-3957 reads "per-product sends": the line
+// below names the ticket.
+function withoutTicket(title, branch) {
+  const ticket = branch ? ticketOf(branch) : "";
+  const lead = title.match(/^([A-Za-z]+-\d+)\b[\s:·-]*(.+)/);
+  return lead && lead[1].toUpperCase() === ticket ? lead[2] : title;
 }
 
 function agentTitle(agent) {
