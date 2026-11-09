@@ -38,13 +38,24 @@ local function resize_amount()
     return vim.fn.winnr("$") > 1 and 2 or 0.03
 end
 
+-- smart-splits v2 hands a sidebar float at the screen edge (the snacks explorer) only to a
+-- multiplexer, never to at_edge, and herdr-app isn't one; so call at_edge for it here.
+local function move_cursor(direction)
+    local utils = require("smart-splits.utils")
+    if utils.is_embedded_floating_window() and utils.is_floating_window_at_screen_edge(nil, direction) then
+        require("smart-splits.config").at_edge({ direction = direction })
+    end
+    require("smart-splits")["move_cursor_" .. direction]()
+end
+
 for key, spec in pairs(smart_splits) do
     local fn, desc = spec[1], spec[2]
+    local direction = fn:match("^move_cursor_(%a+)$")
     vim.keymap.set({ "n", "t" }, key, function()
-        if fn:match("^resize_") then
-            require("smart-splits")[fn](resize_amount())
+        if direction then
+            move_cursor(direction)
         else
-            require("smart-splits")[fn]()
+            require("smart-splits")[fn](resize_amount())
         end
     end, { desc = desc })
 end
