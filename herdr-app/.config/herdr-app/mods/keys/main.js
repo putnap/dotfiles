@@ -290,20 +290,43 @@ function pinAgent() {
 
 // Linear's links come from its bot's comment on the pull request (as herdr's sidebar/open.sh).
 const LINEAR_ISSUE = /https:\/\/linear\.app\/[\w-]+\/issue\/[A-Za-z]+-\d+/;
+const LINEAR_REVIEW = /https:\/\/linear\.app\/[\w-]+\/review\/[\w-]+/;
+const LINEAR_WORKSPACE = /https:\/\/linear\.app\/([\w-]+)\//;
 
+// herdr's prefix+i and prefix+shift+i (sidebar/open.sh): the pull request where it's reviewed,
+// Linear's review when the repo is wired to Linear, else GitHub; and its Linear issue, which
+// before there is a pull request the branch's ticket still names.
 async function openPullRequest() {
   const cwd = focused()?.cwd;
-  const opened = await exec("gh", ["pr", "view", "--web"], { cwd });
-  if (opened.code !== 0) notify({ title: "No pull request", body: `for ${cwd}`, level: "info" });
+  const links = await pullRequestLinks(cwd);
+  const url = links?.review ?? links?.github;
+  if (url) await exec("open", [url]);
+  else notify({ title: "No pull request", body: `for ${cwd}`, level: "info" });
 }
 
 async function openIssue() {
   const cwd = focused()?.cwd;
-  const pr = await exec("gh", ["pr", "view", "--json", "body,comments"], { cwd });
-  const text = pr.code === 0 ? pullRequestText(JSON.parse(pr.stdout)) : "";
-  const url = text.match(LINEAR_ISSUE)?.[0];
+  const url = (await pullRequestLinks(cwd))?.issue ?? (await issueFromTicket(cwd));
   if (url) await exec("open", [url]);
   else notify({ title: "No Linear issue", body: `for ${cwd}`, level: "info" });
+}
+
+async function pullRequestLinks(cwd) {
+  const pr = await exec("gh", ["pr", "view", "--json", "url,body,comments"], { cwd });
+  if (pr.code !== 0) return null;
+  const view = JSON.parse(pr.stdout);
+  const text = pullRequestText(view);
+  return { github: view.url, review: text.match(LINEAR_REVIEW)?.[0] ?? null, issue: text.match(LINEAR_ISSUE)?.[0] ?? null };
+}
+
+// The Linear workspace is read off the repo's recent pull requests, which its bot links.
+async function issueFromTicket(cwd) {
+  const branch = await exec("git", ["rev-parse", "--abbrev-ref", "HEAD"], { cwd });
+  const ticket = branch.stdout.match(/([A-Za-z]+-\d+)/)?.[1]?.toUpperCase();
+  if (!ticket) return null;
+  const recent = await exec("gh", ["pr", "list", "--state", "all", "--limit", "5", "--json", "body,comments"], { cwd });
+  const workspace = recent.code === 0 ? JSON.parse(recent.stdout).map(pullRequestText).join(" ").match(LINEAR_WORKSPACE)?.[1] : null;
+  return workspace ? `https://linear.app/${workspace}/issue/${ticket}` : null;
 }
 
 function pullRequestText(pr) {
