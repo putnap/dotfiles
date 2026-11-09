@@ -1,4 +1,4 @@
-theme = "catppuccin-mocha"     # any built-in theme id, auto, or custom
+theme = "catppuccin-nvim"      # any built-in theme id, auto, or custom
 mode = "auto"                  # auto, split, stack
 vcs = "git"                    # git, jj, sl
 watch = false
@@ -7,3 +7,44 @@ line_numbers = true
 wrap_lines = false
 agent_notes = true
 transparent_background = false
+menu_bar = false
+
+# catppuccin mocha as catppuccin.nvim paints it in LazyVim: flat chrome, diff lines at its 18% blend.
+[themes.catppuccin-nvim]
+base = "catppuccin-mocha"
+background = "#1e1e2e"
+panel = "#1e1e2e"
+panelAlt = "#181825"
+border = "#313244"
+accent = "#89b4fa"
+accentMuted = "#313244"
+text = "#cdd6f4"
+muted = "#7f849c"
+contextBg = "#1e1e2e"
+contextContentBg = "#1e1e2e"
+addedBg = "#364143"
+addedContentBg = "#364143"
+removedBg = "#443244"
+removedContentBg = "#443244"
+addedSignColor = "#a6e3a1"
+removedSignColor = "#f38ba8"
+lineNumberBg = "#1e1e2e"
+lineNumberFg = "#45475a"
+selectedHunk = "#313244"
+badgeAdded = "#a6e3a1"
+badgeRemoved = "#f38ba8"
+badgeNeutral = "#7f849c"
+fileNew = "#a6e3a1"
+fileUntracked = "#cba6f7"
+fileModified = "#f9e2af"
+fileRenamed = "#b4befe"
+fileDeleted = "#f38ba8"
+noteBorder = "#89b4fa"
+noteBackground = "#181825"
+noteTitleBackground = "#181825"
+noteTitleText = "#cdd6f4"
+
+# hunk leaves note-to-note jumps unbound; n/N as after a vim search.
+[keybindings]
+"hunk.review.nextNote" = "n"
+"hunk.review.previousNote" = "N"
