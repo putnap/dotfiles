@@ -124,7 +124,9 @@
               fi
               
               function nixr() {
-                nix flake update --flake "$(readlink -f ~/.config/nix)" || return
+                # Anonymous GitHub API calls cap at 60/hour, which the input checks exhaust.
+                NIX_CONFIG="access-tokens = github.com=$(gh auth token)" \
+                  nix flake update --flake "$(readlink -f ~/.config/nix)" || return
                 brew update || return
                 sudo darwin-rebuild switch --flake "$(readlink -f ~/.config/nix)#mac"
               }
