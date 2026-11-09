@@ -54,6 +54,7 @@
                 lazydocker
                 rainfrog # Postgres TUI
                 delta
+                hunk # modem-dev/tap stopped at 0.17; nixpkgs tracks releases
                 yazi
                 glow
                 fd
@@ -181,7 +182,6 @@
             "media-control"
             "PeonPing/tap/peon-ping"
             "tnk-studio/tools/lazykube"
-            "modem-dev/tap/hunk"
             "vite-plus"
             "bjarneo/cliamp/cliamp"
             # Prebuilt release binaries; Nix compiled these on every nixpkgs bump.
@@ -195,7 +195,6 @@
             "nikitabobko/tap"
             "PeonPing/tap"
             "tnk-studio/tools"
-            "modem-dev/tap"
             "bjarneo/cliamp"
             "raine/workmux"
             "hashicorp/tap"
