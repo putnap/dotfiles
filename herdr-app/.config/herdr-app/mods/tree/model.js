@@ -16,9 +16,10 @@ export function buildTree(git, closedFolders) {
   const agentOfPane = Object.fromEntries(agents().map((a) => [a.pane, a]));
   const checkoutOf = (p) => git.checkout(spaceOfTab[p.tab].machine, p.cwd);
 
-  const trees = allSpaces.map((space) => {
-    const own = allPanes.filter((p) => spaceOfTab[p.tab].id === space.id);
-    const checkout = (own[0] && checkoutOf(own[0])) ?? git.checkout(space.machine, space.folder);
+  const trees = allSpaces.map((shown) => {
+    const own = allPanes.filter((p) => spaceOfTab[p.tab].id === shown.id);
+    const checkout = homeCheckout(git.checkout(shown.machine, shown.folder), own.map(checkoutOf));
+    const space = { ...shown, name: spaceName(shown, checkout) };
     const inHome = (p) => !checkoutOf(p) || checkoutOf(p).top === checkout?.top;
     const others = [...new Set(own.filter((p) => !inHome(p)).map((p) => checkoutOf(p).top))];
     return {
@@ -28,15 +29,29 @@ export function buildTree(git, closedFolders) {
     };
   });
 
-  const context = { here, agentOfPane, git };
+  const nameOf = Object.fromEntries(trees.map((tree) => [tree.space.id, tree.space.name]));
+  const context = { here, agentOfPane, git, nameOf };
   const folders = projectFolders(trees);
   return {
     rows: folders.flatMap((folder) => folderRows(folder, closedFolders.has(folder.owner.space.id), context)),
     folderOf: Object.fromEntries(folders.flatMap((f) => [f.owner, ...f.worktrees].map((tree) => [tree.space.id, f.owner.space]))),
-    inbox: inboxRows(here),
+    inbox: inboxRows(here, nameOf),
     paths: [...allPanes.map((p) => ({ machine: spaceOfTab[p.tab].machine, folder: p.cwd })), ...allSpaces.map((s) => ({ machine: s.machine, folder: s.folder }))].filter((f) => f.folder),
     tops: trees.flatMap((t) => [t.checkout, ...t.groups.map((g) => g.checkout)].filter(Boolean).map((c) => ({ machine: t.space.machine, top: c.top }))),
   };
+}
+
+// A space is its folder's checkout while any of its panes is still in it, so an agent moving into
+// a worktree doesn't take the space along; else its first pane's (the folder has been left).
+function homeCheckout(folderCheckout, paneCheckouts) {
+  if (folderCheckout && paneCheckouts.some((c) => c?.top === folderCheckout.top)) return folderCheckout;
+  return paneCheckouts[0] ?? folderCheckout;
+}
+
+// herdr-app calls an unnamed space after where its first terminal is, which an agent moving into
+// a worktree changes; after its home checkout's folder instead, it stays put.
+function spaceName(space, checkout) {
+  return space.named || !checkout ? space.name : checkout.top.split("/").pop();
 }
 
 // Where shift+down (step 1) or shift+up (-1) lands: the next stop after where the walk last
@@ -106,10 +121,10 @@ function spaceEntries(tree, ownsFolder, context) {
   return [...homeRows, ...groupRows];
 }
 
-function checkoutEntries(list, checkout, { here, agentOfPane, git }) {
+function checkoutEntries(list, checkout, { here, agentOfPane, git, nameOf }) {
   return list.filter((p) => agentOfPane[p.pane]).map((p) => {
     const agent = agentOfPane[p.pane];
-    return { kind: "agent", key: `agent:${agent.address}`, stop: true, agent, ...checkoutFacts(checkout, agent.space, git), here: agent.pane === here?.pane, target: { terminal: agent.address } };
+    return { kind: "agent", key: `agent:${agent.address}`, stop: true, agent, spaceName: nameOf[agent.space], ...checkoutFacts(checkout, agent.space, git), here: agent.pane === here?.pane, target: { terminal: agent.address } };
   });
 }
 
@@ -146,8 +161,8 @@ function mostUrgent(list) {
   return URGENCY.find((status) => list.some((a) => a.status === status)) ?? null;
 }
 
-function inboxRows(here) {
+function inboxRows(here, nameOf) {
   const waiting = agents().filter((a) => a.pinned || a.status === "blocked" || a.status === "done");
   waiting.sort((a, b) => (b.pinned - a.pinned) || (b.seq - a.seq));
-  return waiting.map((agent) => ({ kind: "inbox", key: `inbox:${agent.address}`, stop: true, agent, here: agent.pane === here?.pane, target: { terminal: agent.address } }));
+  return waiting.map((agent) => ({ kind: "inbox", key: `inbox:${agent.address}`, stop: true, agent, spaceName: nameOf[agent.space] ?? agent.space_name, here: agent.pane === here?.pane, target: { terminal: agent.address } }));
 }

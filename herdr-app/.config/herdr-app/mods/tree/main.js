@@ -183,7 +183,7 @@ function agentRow(t, row, cacheExpiresAt) {
       .child(h_flex().h(22).gap(8).items_center()
         .child(div().id(`tree-title-${row.key}`).flex_1().min_w(0).truncate().text_size(13)
           .text_color(recedes ? t.muted : t.foreground).when(!recedes, (d) => d.font_medium())
-          .tooltip(`${agentTitle(agent)} · ${agent.space_name} › ${agent.tab_name}`)
+          .tooltip(`${agentTitle(agent)} · ${row.spaceName} › ${agent.tab_name}`)
           .child(withoutTicket(agentTitle(agent), row.branch)))
         .when(agent.pinned, (el) => el.child(svg(`${ICONS}/pin.svg`).size(11).flex_none().text_color(t.dim)))
         .child(statusTime(t, agent, cacheExpiresAt)))
@@ -379,7 +379,7 @@ function inboxCard(t, row) {
       .child(div().flex_1().min_w(0).truncate().text_size(13).font_medium().text_color(t.foreground).child(agentTitle(agent)))
       .when(agent.pinned, (el) => el.child(svg(`${ICONS}/pin.svg`).size(11).flex_none().text_color(t.dim)))
       .child(statusSlot(t, agent)))
-    .child(div().h(18).truncate().text_size(11.5).text_color(t.dim).child(`${agent.space_name} · ${agent.tab_name}`));
+    .child(div().h(18).truncate().text_size(11.5).text_color(t.dim).child(`${row.spaceName} · ${agent.tab_name}`));
 }
 
 // One row's surface: hover, the focused row's highlight, and a click that lands on it.
