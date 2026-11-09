@@ -3,7 +3,8 @@
 # remote: a pane with others beside it closes at once, a space's last opens the close dialog
 # as a popup, and the dialog, typed into a pane of its own, removes a merged pull request's
 # worktree with its local and remote branch, an open one's with only its local branch, and
-# closes a worktree's space while keeping everything, or nothing on esc. gh is a stub.
+# closes a worktree's space while keeping everything, or nothing on esc. Each removal leaves one
+# line in done.jsonl. gh is a stub.
 set -euo pipefail
 repo=$(cd "$(dirname "$0")/.." && pwd -P)
 scratch=$(mktemp -d /tmp/herdr-close.XXXXXX)
@@ -26,8 +27,8 @@ mkdir -p "$scratch/bin"
 cat > "$scratch/bin/gh" <<'STUB'
 #!/bin/sh
 case "$1 $2 $3" in
-  "pr view feature/eng-1-merged") echo 'MERGED 1' ;;
-  "pr view feature/eng-2-open") echo 'OPEN 2' ;;
+  "pr view feature/eng-1-merged") echo 'MERGED 1 https://github.com/test/app/pull/1' ;;
+  "pr view feature/eng-2-open") echo 'OPEN 2 https://github.com/test/app/pull/2' ;;
   *) echo 'no pull requests found' >&2; exit 1 ;;
 esac
 STUB
@@ -129,6 +130,11 @@ wait_for false space_open "$merged"
 expect no "$(exists "$scratch/app-eng-1-merged")" 'the merged worktree is removed'
 expect no "$(local_branch feature/eng-1-merged)" 'the merged local branch is deleted'
 expect no "$(remote_branch feature/eng-1-merged)" 'the merged remote branch is deleted'
+done_log=$XDG_STATE_HOME/herdr/done.jsonl
+done_line() { sed -n "$1p" "$done_log" | jq -c 'del(.at)'; }
+expect "{\"repo\":\"$scratch/app\",\"branch\":\"feature/eng-1-merged\",\"titles\":[],\"pull_request\":{\"number\":1,\"url\":\"https://github.com/test/app/pull/1\"}}" \
+  "$(done_line 1)" 'the removal is logged with its pull request'
+expect true "$(sed -n 1p "$done_log" | jq '.at > 1700000000000')" 'the log line is stamped in ms'
 
 # An open one has no remote line: close, worktree, local, so the third removes the local branch.
 dialog "$open" down down enter
@@ -136,6 +142,7 @@ wait_for false space_open "$open"
 expect no "$(exists "$scratch/app-eng-2-open")" 'the open worktree is removed'
 expect no "$(local_branch feature/eng-2-open)" 'the open local branch is deleted'
 expect yes "$(remote_branch feature/eng-2-open)" 'the open pull request keeps its branch'
+expect feature/eng-2-open "$(done_line 2 | jq -r .branch)" 'the second removal is logged'
 
 # Esc closes nothing, and the lines that would delete a changed file say so; the first line
 # without a pull request closes the space and keeps the rest.
@@ -146,5 +153,6 @@ wait_for false space_open "$kept"
 expect yes "$(exists "$scratch/app-eng-3-kept/notes.txt")" 'closing keeps the worktree and its changes'
 expect yes "$(local_branch feature/eng-3-kept)" 'closing keeps the local branch'
 expect yes "$(remote_branch feature/eng-3-kept)" 'closing keeps the remote branch'
+expect 2 "$(wc -l < "$done_log" | tr -d ' ')" 'closing without removing logs nothing'
 
-printf '%s\n' 'worktree close passed: a pane closes at once, the last opens the dialog, merged cleans all, open keeps its remote, close keeps everything, esc nothing'
+printf '%s\n' 'worktree close passed: a pane closes at once, the last opens the dialog, merged cleans all, open keeps its remote, close keeps everything, esc nothing, removals logged'

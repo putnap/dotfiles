@@ -9,6 +9,7 @@ import { buildTree, nextStop, latestAttention } from "./model.js";
 import { spaceColor, publishSpaceColors } from "./colors.js";
 import { askAccounts, accountsShelf } from "./accounts.js";
 import { askCacheExpiries } from "./cache.js";
+import { askDone, doneShelf } from "./done.js";
 
 const EXPANDED_WIDTH = 280;
 // The 20px icons with 11px either side.
@@ -26,6 +27,8 @@ export default class Tree extends View {
     this.closedFolders = new Set();
     cx.timer.every(15000, (cx) => this.refreshGit(cx));
     this.cacheExpiries = {};
+    this.done = [];
+    this.doneOpen = false;
     this.refreshEachMinute(cx);
     cx.timer.every(60000, (cx) => this.refreshEachMinute(cx)); // also redraws the relative times
     this.accounts = [];
@@ -55,7 +58,7 @@ export default class Tree extends View {
 
   refreshEachMinute(cx) {
     cx.spawn(async (cx) => {
-      this.cacheExpiries = await askCacheExpiries(agents());
+      [this.cacheExpiries, this.done] = await Promise.all([askCacheExpiries(agents()), askDone()]);
       cx.notify();
     });
   }
@@ -131,6 +134,7 @@ function expandedView(tree, view) {
     .child(v_flex().id("tree-rows").flex_1().min_h(0).pb(6).gap(1).overflow_y_scrollbar()
       .children(tree.rows.map((row) => ROW_VIEWS[row.kind](t, row, view))))
     .when(tree.inbox.length > 0, (el) => el.child(inbox(t, tree.inbox, view)))
+    .when(view.done.length > 0, (el) => el.child(doneShelf(t, view.done, view.doneOpen, (_e, cx) => { view.doneOpen = !view.doneOpen; cx.notify(); }, ICONS)))
     .when(view.accounts.length > 0, (el) => el.child(accountsShelf(t, view.accounts, view.accountsOpen, (_e, cx) => { view.accountsOpen = !view.accountsOpen; cx.notify(); })));
 }
 

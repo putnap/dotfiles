@@ -3,7 +3,7 @@
 
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input, Scrollbar } from "gpui-base";
-import { run, props, closeOverlay, theme, spaces, panes, exec, home } from "herdr";
+import { run, props, closeOverlay, theme, spaces, panes, agents, exec, home } from "herdr";
 
 // Where a space is now: its first terminal's live folder, else where it was made.
 function place(s, all = panes()) {
@@ -91,6 +91,21 @@ function afterSetup(setup, argv) {
 
 function shellQuote(word) {
   return `'${word.replace(/'/g, "'\\''")}'`;
+}
+
+// What the Done shelf keeps of a removed worktree (one line of herdr's done.jsonl, which the
+// herdr TUI's close-space.sh writes too): read before its space closes, its pull request asked
+// meanwhile.
+async function doneRecord(repo, space, on) {
+  const titles = agents().filter((a) => a.space === space.id).map((a) => a.title).filter(Boolean);
+  const branch = await git(repo.top, ["symbolic-ref", "--short", "-q", "HEAD"], on);
+  const name = branch.ok ? branch.out : null;
+  const pr = name ? await exec("gh", ["pr", "view", name, "--json", "number,url"], { cwd: repo.main, on }) : null;
+  return { at: Date.now(), repo: repo.main, branch: name, titles, pull_request: pr?.code === 0 ? JSON.parse(pr.stdout) : null };
+}
+
+function saveDone(record) {
+  return exec("sh", ["-c", 'log="${XDG_STATE_HOME:-$HOME/.local/state}/herdr/done.jsonl"; mkdir -p "${log%/*}" && printf \'%s\\n\' "$1" >> "$log"', "sh", JSON.stringify(record)]);
 }
 
 async function git(cwd, args, on, timeout) {
@@ -249,6 +264,7 @@ export default class Worktree extends View {
 
   async remove() {
     const s = this.space();
+    const done = doneRecord(this.repo, s, this.on);
     const status = await git(this.repo.top, ["--no-optional-locks", "-c", "core.fsmonitor=false", "status", "--porcelain"], this.on);
     if (!status.ok) return status.err || "git status failed.";
     // git refuses a worktree with submodules unless forced, because their
@@ -263,7 +279,9 @@ export default class Worktree extends View {
     run("space.close", { id: s.id, confirmed: true });
     const force = this.dirty || mods.length > 0;
     const r = await git(this.repo.main, ["worktree", "remove", ...(force ? ["--force"] : []), this.repo.top], this.on, 600_000);
-    return r.ok ? "" : r.err || "git worktree remove failed.";
+    if (!r.ok) return r.err || "git worktree remove failed.";
+    await saveDone(await done);
+    return "";
   }
 
   key(e, cx) {

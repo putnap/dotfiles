@@ -4,7 +4,8 @@
 # remove the worktree, then its local branch, then its remote one. Esc closes nothing.
 # A merged pull request puts the full cleanup first; an open one gets no remote line, since
 # deleting its branch would close it. Changed files and commits not on the main checkout's
-# branch are named on the lines that would delete them.
+# branch are named on the lines that would delete them. A removed worktree leaves a line in
+# done.jsonl, which the Herdr app's done shelf lists.
 #
 # Usage: CLOSE_WORKSPACE=w1 close-space.sh   in the popup close-pane.sh opens
 set -euo pipefail
@@ -33,16 +34,16 @@ read_space() {
 
 # The checkout's branch and what deleting it would lose; nothing outside a worktree.
 read_branch() {
-  branch="" changed=0 unmerged=0 remote="" remote_branch="" pull_request=""
+  branch="" changed=0 unmerged=0 remote="" remote_branch="" pr_state="" pr_number="" pr_url=""
   if [[ -z $checkout ]]; then return 0; fi
   branch=$(git -C "$checkout" symbolic-ref --short -q HEAD || true)
   changed=$(git -C "$checkout" status --porcelain | grep -c . || true)
   if [[ -z $branch ]]; then return 0; fi
   read_remote_branch
   printf '  Checking the pull request…' >&2
-  pull_request=$(gh_pull_request)
+  read -r pr_state pr_number pr_url <<< "$(gh_pull_request)" || true
   printf '\r\033[K' >&2
-  if [[ $pull_request != MERGED* ]]; then
+  if [[ $pr_state != MERGED ]]; then
     unmerged=$(git -C "$repo" rev-list --count "HEAD..$branch")
   fi
 }
@@ -58,16 +59,16 @@ read_remote_branch() {
   fi
 }
 
-# "MERGED 12", "OPEN 12", or nothing without one (or without gh).
+# "MERGED 12 https://…", "OPEN 12 https://…", or nothing without one (or without gh).
 gh_pull_request() {
-  (cd "$repo" && gh pr view "$branch" --json state,number --jq '"\(.state) \(.number)"' 2>/dev/null) || true
+  (cd "$repo" && gh pr view "$branch" --json state,number,url --jq '"\(.state) \(.number) \(.url)"' 2>/dev/null) || true
 }
 
 # Lines of action, tab, what it says.
 choices() {
   if [[ -z $checkout ]]; then
     line close "close $label"
-  elif [[ $pull_request == MERGED* ]]; then
+  elif [[ $pr_state == MERGED ]]; then
     line remote "remove the worktree, local and remote branch$(changed_note)"
     line local "remove the worktree and local branch$(changed_note)"
     line worktree "remove the worktree$(changed_note)"
@@ -86,7 +87,7 @@ keep_possible() {
   local action text
   while IFS=$'\t' read -r action text; do
     if [[ $action == local || $action == remote ]] && [[ -z $branch ]]; then continue; fi
-    if [[ $action == remote ]] && [[ -z $remote_branch || $pull_request == OPEN* ]]; then continue; fi
+    if [[ $action == remote ]] && [[ -z $remote_branch || $pr_state == OPEN ]]; then continue; fi
     printf '%s\t%s\n' "$action" "$text"
   done
 }
@@ -112,9 +113,9 @@ main_branch() {
 header() {
   if [[ -z $checkout ]]; then printf 'Close this space?'; return 0; fi
   printf '%s' "${branch:-detached checkout}"
-  case $pull_request in
-    MERGED*) printf ' · PR #%s merged' "${pull_request#* }" ;;
-    OPEN*) printf ' · PR #%s open' "${pull_request#* }" ;;
+  case $pr_state in
+    MERGED) printf ' · PR #%s merged' "$pr_number" ;;
+    OPEN) printf ' · PR #%s open' "$pr_number" ;;
   esac
 }
 
@@ -127,11 +128,30 @@ act() {
   esac
 }
 
-# herdr closes the space with the checkout; --force is what lets changed files go.
+# herdr closes the space with the checkout; --force is what lets changed files go. The agents'
+# titles are read first, while their panes still exist.
 remove_worktree() {
-  local force=()
+  local force=() titles
   if [[ $changed -gt 0 ]]; then force=(--force); fi
+  titles=$(agent_titles)
   "$herdr" worktree remove --workspace "$workspace" "${force[@]}" >/dev/null || die "herdr could not remove the worktree"
+  record_done "$titles" || true
+}
+
+agent_titles() {
+  "$herdr" pane list --workspace "$workspace" |
+    jq -c '[.result.panes[] | select(.agent != null) | (.terminal_title_stripped // .label) | select(. != null and . != "")]' ||
+    echo '[]'
+}
+
+# One line in the log the done shelf reads; the same shape the Herdr app's worktree mod writes.
+record_done() {
+  local log=${XDG_STATE_HOME:-$HOME/.local/state}/herdr/done.jsonl
+  mkdir -p "$(dirname "$log")"
+  jq -nc --argjson at "$(($(date +%s) * 1000))" --arg repo "$repo" --arg branch "$branch" --argjson titles "$1" \
+    --arg number "$pr_number" --arg url "$pr_url" \
+    '{at: $at, repo: $repo, branch: (if $branch == "" then null else $branch end), titles: $titles,
+      pull_request: (if $number == "" then null else {number: ($number | tonumber), url: $url} end)}' >> "$log"
 }
 
 # -D: a squash-merged branch never counts as merged to git, and the line already named
