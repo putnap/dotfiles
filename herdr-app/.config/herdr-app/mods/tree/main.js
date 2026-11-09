@@ -3,11 +3,12 @@
 // to a strip of space tiles instead of hiding it, so shift+up/down still walk it (tree.next / tree.previous).
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
-import { run, spaces, focused, theme, nextCommand, setAgentOrder, keys } from "herdr";
+import { run, spaces, focused, theme, nextCommand, setAgentOrder, keys, agents } from "herdr";
 import { Git } from "./git.js";
 import { buildTree, nextStop, latestAttention } from "./model.js";
 import { spaceColor, publishSpaceColors } from "./colors.js";
 import { askAccounts, accountsShelf } from "./accounts.js";
+import { askCacheExpiries } from "./cache.js";
 
 const EXPANDED_WIDTH = 280;
 // The 20px icons with 11px either side.
@@ -24,7 +25,9 @@ export default class Tree extends View {
     this.inboxOpen = true;
     this.closedFolders = new Set();
     cx.timer.every(15000, (cx) => this.refreshGit(cx));
-    cx.timer.every(60000, (cx) => cx.notify()); // relative times
+    this.cacheExpiries = {};
+    this.refreshEachMinute(cx);
+    cx.timer.every(60000, (cx) => this.refreshEachMinute(cx)); // also redraws the relative times
     this.accounts = [];
     this.accountsOpen = false;
     this.refreshAccounts(cx);
@@ -38,14 +41,22 @@ export default class Tree extends View {
     publishSpaceColors(theme(), tree.folderOf);
     setAgentOrder([...tree.inbox, ...tree.rows.filter((r) => r.kind === "agent")].map((r) => r.agent.address));
     const body = this.width < 120 ? collapsedView(tree) : expandedView(tree, this);
-    return v_flex().id("tree-root").size_full().bg(theme().chrome)
+    return v_flex().id("tree-root").relative().size_full().bg(theme().chrome)
       .on_size_change((size, cx) => { this.width = size.width; cx.notify(); })
-      .child(body);
+      .child(body)
+      .child(foldingEdge(this));
   }
 
   refreshGit(cx, tree = buildTree(this.git, this.closedFolders)) {
     cx.spawn(async (cx) => {
       if (await this.git.refresh(tree.paths, tree.tops)) cx.notify();
+    });
+  }
+
+  refreshEachMinute(cx) {
+    cx.spawn(async (cx) => {
+      this.cacheExpiries = await askCacheExpiries(agents());
+      cx.notify();
     });
   }
 
@@ -98,6 +109,16 @@ const TREE_COMMANDS = {
   attention: (view) => view.jumpToAttention(),
 };
 
+// Double-clicking the divider folds or unfolds the sidebar elsewhere; the layout's divider takes
+// no clicks from mods, so a strip along this side of it does.
+function foldingEdge(view) {
+  return div().id("tree-folding-edge").absolute().top(0).bottom(0).right(0).w(4).cursor_col_resize()
+    .on_mouse_down("left", (event, cx) => {
+      cx.stop_propagation();
+      if (event.click_count === 2) view.toggle();
+    });
+}
+
 function land(row) {
   if (row.target.terminal) run("agent.focus", { terminal: row.target.terminal });
   else if (row.target.pane) run("pane.focus", { pane: row.target.pane });
@@ -115,7 +136,7 @@ function expandedView(tree, view) {
 
 const ROW_VIEWS = {
   folder: (t, row, view) => folderRow(t, row, view),
-  agent: (t, row) => agentRow(t, row),
+  agent: (t, row, view) => agentRow(t, row, view.cacheExpiries[row.agent.address]),
   checkout: (t, row) => checkoutRow(t, row),
 };
 
@@ -141,7 +162,7 @@ function folderRow(t, row, view) {
 
 // t3code's thread row: its status icon in the folder tile's column, where the collapsed sidebar
 // draws it, then the title and its time over the checkout it works in.
-function agentRow(t, row) {
+function agentRow(t, row, cacheExpiresAt) {
   const { agent } = row;
   const recedes = agent.status === "idle" && !row.here;
   return rowSurface(t, row, h_flex().py(5).px(INSET).gap(10).items_center())
@@ -152,7 +173,7 @@ function agentRow(t, row) {
           .text_color(recedes ? t.muted : t.foreground).when(!recedes, (d) => d.font_medium())
           .child(agentTitle(agent)))
         .when(agent.pinned, (el) => el.child(svg(`${ICONS}/pin.svg`).size(11).flex_none().text_color(t.dim)))
-        .child(statusTime(t, agent)))
+        .child(statusTime(t, agent, cacheExpiresAt)))
       .child(metaLine(t, row, agent.program)));
 }
 
@@ -163,10 +184,28 @@ function agentIcon(t, row) {
 }
 
 // How long a working agent has worked, else how long an idle one has sat; the icon says the rest.
-function statusTime(t, agent) {
+// A cache about to expire takes the slot: replying after it rewrites the whole context.
+function statusTime(t, agent, cacheExpiresAt) {
+  const expiring = minutesUntil(cacheExpiresAt);
   if (agent.status === "working") return div().flex_none().text_size(11.5).text_color(t.working).child(workingFor(agent));
+  if (expiring !== null) return cacheMark(t, agent, expiring);
   if (agent.status === "idle") return div().flex_none().text_size(11.5).text_color(t.dim).child(sinceChange(agent));
   return div();
+}
+
+const CACHE_WARNING_MINUTES = 10;
+
+// Whole minutes left within the warning window, else null.
+function minutesUntil(expiresAt) {
+  const left = Math.ceil(((expiresAt ?? 0) - Date.now()) / 60000);
+  return left > 0 && left <= CACHE_WARNING_MINUTES ? left : null;
+}
+
+function cacheMark(t, agent, minutes) {
+  return h_flex().id(`tree-cache-${agent.address}`).flex_none().gap(3).items_center().text_size(11.5).text_color(t.ansi3)
+    .tooltip(`Prompt cache expires in ${minutes} min; a reply after that rewrites the whole context`)
+    .child(svg(`${ICONS}/clock.svg`).size(11).text_color(t.ansi3))
+    .child(div().child(`${minutes}m`));
 }
 
 // A checkout nobody's agent works in: a worktree space, or a folder a shell is in.
