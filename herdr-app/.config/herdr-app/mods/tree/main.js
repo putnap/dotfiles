@@ -167,8 +167,8 @@ function folderRow(t, row, view) {
     .when(Boolean(row.drift), (el) => el.child(driftMark(t, row)))
     .when(Boolean(row.dot), (el) => el.child(div().size(6).flex_none().rounded(3).bg(t[STATUS[row.dot].color])))
     .when(row.hiddenCount > 0, (el) => el.child(div().flex_none().text_size(11.5).text_color(t.dim).child(String(row.hiddenCount))))
-    .child(h_flex().id(`tree-chevron-${row.space.id}`).size(20).flex_none().items_center().justify_center()
-      .hover((s) => s.bg(t.hover)).on_click(toggle)
+    .child(h_flex().id(`tree-chevron-${row.space.id}`).size(20).flex_none().rounded(4).items_center().justify_center()
+      .hover((s) => s.bg(t.input)).on_click(toggle)
       .child(svg(`${ICONS}/${row.closed ? "chevron-right" : "chevron-down"}.svg`).size(12).text_color(t.dim)));
 }
 
@@ -274,16 +274,22 @@ function iconButton(t, id, tooltip) {
     .hover((s) => s.bg(t.input)).tooltip(tooltip);
 }
 
+// Text lit the same way; its padding is pulled back out so the text stays where it was.
+function textButton(t, id, tooltip) {
+  return h_flex().id(id).h(18).px(4).mx(-4).rounded(4).items_center().cursor_pointer()
+    .hover((s) => s.bg(t.input)).tooltip(tooltip);
+}
+
 // The ticket opens its Linear issue when the pull request links one, else a click copies the
 // branch. Only the text takes the click; the space after it still lands on the row.
 function workName(t, row) {
   const line = h_flex().flex_1().min_w(0);
   if (!row.branch) return line.child(div().truncate().child("no branch"));
   const issue = row.pullRequest?.issue;
-  const name = div().id(`tree-name-${row.key}`).min_w(0).truncate().text_color(t.muted).cursor_pointer().hover((s) => s.underline())
-    .child(ticketOf(row.branch));
-  if (issue) return line.child(name.tooltip(`${row.branch} · open ${issue.id} in Linear`).on_click((_e, cx) => { cx.stop_propagation(); cx.open_url(issue.url); }));
-  return line.child(name.tooltip(`${row.branch} · click to copy`).on_click((_e, cx) => { cx.stop_propagation(); cx.write_to_clipboard(row.branch); }));
+  const name = (tooltip) => textButton(t, `tree-name-${row.key}`, tooltip).min_w(0).text_color(t.muted)
+    .child(div().truncate().child(ticketOf(row.branch)));
+  if (issue) return line.child(name(`${row.branch} · open ${issue.id} in Linear`).on_click((_e, cx) => { cx.stop_propagation(); cx.open_url(issue.url); }));
+  return line.child(name(`${row.branch} · click to copy`).on_click((_e, cx) => { cx.stop_propagation(); cx.write_to_clipboard(row.branch); }));
 }
 
 // One icon in its state's colour, red while checks fail; it opens where the pull request is
@@ -303,8 +309,7 @@ function driftMark(t, row) {
   const { ahead, behind } = row.drift;
   const sides = [ahead ? `↑${ahead}` : null, behind ? `↓${behind}` : null].filter(Boolean);
   const facts = [ahead ? `${ahead} ahead of main` : null, behind ? `${behind} behind` : null, "as of the last fetch", LAZYGIT_TOOLTIP];
-  return div().id(`tree-drift-${row.key}`).flex_none().text_size(11.5).text_color(t.muted).cursor_pointer()
-    .hover((s) => s.underline()).tooltip(facts.filter(Boolean).join(" · "))
+  return textButton(t, `tree-drift-${row.key}`, facts.filter(Boolean).join(" · ")).flex_none().text_size(11.5).text_color(t.muted)
     .on_click((_e, cx) => { cx.stop_propagation(); land(row); run("keys.lazygit"); })
     .child(sides.join(" "));
 }

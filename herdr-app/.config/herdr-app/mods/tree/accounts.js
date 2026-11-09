@@ -63,8 +63,8 @@ function windowLabel(label) {
 
 // Its icon in line with the account names; a click on it doesn't also fold the shelf.
 function clauthButton(t) {
-  return h_flex().id("tree-clauth").size(22).ml(-5).flex_none().items_center().justify_center().cursor_pointer()
-    .hover((s) => s.bg(t.hover)).tooltip("Open clauth")
+  return h_flex().id("tree-clauth").size(22).ml(-5).flex_none().rounded(4).items_center().justify_center().cursor_pointer()
+    .hover((s) => s.bg(t.input)).tooltip("Open clauth")
     .on_click((_e, cx) => { cx.stop_propagation(); openClauth(); })
     .child(svg(`${ICONS}/terminal.svg`).size(13).text_color(t.dim));
 }
