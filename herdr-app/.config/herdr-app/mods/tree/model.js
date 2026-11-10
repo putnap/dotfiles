@@ -79,20 +79,38 @@ function wrap(index, length) {
 }
 
 // herdr nests a repository's linked worktrees in its main checkout's space, but only for a
-// repository with both open; every other space is a folder of its own.
+// repository with both open; every other space is a folder of its own. One folder per repository:
+// a second space on the main checkout (a shell cd'd back into it) nests in the first one's too.
 function projectFolders(trees) {
-  const mainRepos = new Set(trees.filter((t) => t.checkout && !t.checkout.linked).map((t) => t.checkout.repo));
-  const nests = (t) => t.checkout?.linked && mainRepos.has(t.checkout.repo);
-  return trees.filter((t) => !nests(t)).map((owner) => ({
+  const ownerOf = repoOwners(trees);
+  const folderOf = (t) => (t.checkout ? ownerOf.get(t.checkout.repo) : null) ?? t;
+  return trees.filter((t) => folderOf(t) === t).map((owner) => ({
     owner,
-    worktrees: owner.checkout && !owner.checkout.linked ? trees.filter((t) => nests(t) && t.checkout.repo === owner.checkout.repo) : [],
+    worktrees: trees.filter((t) => t !== owner && folderOf(t) === owner),
   }));
+}
+
+// Each repository's first space on its main checkout.
+function repoOwners(trees) {
+  const owners = new Map();
+  for (const t of trees) {
+    if (t.checkout && !t.checkout.linked && !owners.has(t.checkout.repo)) owners.set(t.checkout.repo, t);
+  }
+  return owners;
 }
 
 // A closed folder hides its rows, says how many agents it hides and the most urgent one's
 // status, and is itself the stop; so is an open folder with nothing in it.
+// Inside, the main checkout's rows come first, then the worktrees'.
 function folderRows({ owner, worktrees }, closed, context) {
-  const inside = [...spaceEntries(owner, true, context), ...worktrees.flatMap((tree) => spaceEntries(tree, false, context))];
+  const onMain = worktrees.filter((tree) => !tree.checkout?.linked);
+  const onWorktrees = worktrees.filter((tree) => tree.checkout?.linked);
+  const inside = [
+    ...homeEntries(owner, true, context),
+    ...onMain.flatMap((tree) => spaceEntries(tree, false, context)),
+    ...groupEntries(owner, context),
+    ...onWorktrees.flatMap((tree) => spaceEntries(tree, false, context)),
+  ];
   const hiddenAgents = closed ? inside.filter((r) => r.kind === "agent").map((r) => r.agent) : [];
   const header = {
     kind: "folder", key: `space:${owner.space.id}`, space: owner.space,
@@ -110,15 +128,21 @@ function folderRows({ owner, worktrees }, closed, context) {
 // A space's agents, its own checkout's first, then each other checkout's; a checkout without
 // agents is a row itself, except the folder's own, which its header stands for.
 function spaceEntries(tree, ownsFolder, context) {
+  return [...homeEntries(tree, ownsFolder, context), ...groupEntries(tree, context)];
+}
+
+function homeEntries(tree, ownsFolder, context) {
   const home = checkoutEntries(tree.home, tree.checkout, context);
-  const homeRows = home.length > 0 || ownsFolder ? home : [checkoutRow(`checkout:${tree.space.id}`, worktreeName(tree), tree.checkout, tree.space, tree.home, { space: tree.space.id }, context)];
-  const groupRows = tree.groups.flatMap((group) => {
+  return home.length > 0 || ownsFolder ? home : [checkoutRow(`checkout:${tree.space.id}`, worktreeName(tree), tree.checkout, tree.space, tree.home, { space: tree.space.id }, context)];
+}
+
+function groupEntries(tree, context) {
+  return tree.groups.flatMap((group) => {
     const rows = checkoutEntries(group.panes, group.checkout, context);
     if (rows.length > 0) return rows;
     const shell = group.panes.find((p) => !p.status) ?? group.panes[0];
     return [checkoutRow(`checkout:${tree.space.id}:${group.top}`, group.top.split("/").pop(), group.checkout, tree.space, group.panes, { pane: shell.pane }, context)];
   });
-  return [...homeRows, ...groupRows];
 }
 
 function checkoutEntries(list, checkout, { here, agentOfPane, git, nameOf }) {
