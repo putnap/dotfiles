@@ -11,6 +11,7 @@ import { askAccounts, accountsShelf } from "./accounts.js";
 import { askCacheExpiries } from "./cache.js";
 import { askDone, doneShelf } from "./done.js";
 import { askPorts } from "./ports.js";
+import { askEconomizer, economizerShelf, changePruning } from "./economizer.js";
 
 const EXPANDED_WIDTH = 280;
 // The 20px icons with 11px either side.
@@ -37,12 +38,17 @@ export default class Tree extends View {
     this.accountsOpen = false;
     this.refreshAccounts(cx);
     cx.timer.every(30000, (cx) => this.refreshAccounts(cx));
+    this.economizer = null;
+    this.economizerCwd = null;
+    this.economizerOpen = false;
+    cx.timer.every(60000, (cx) => this.refreshEconomizer(cx, focused()?.cwd));
     cx.spawn(async (cx) => this.receiveCommands(cx));
   }
 
   render(cx) {
     const tree = buildTree(this.git, this.closedFolders);
     this.refreshGit(cx, tree);
+    if (focused()?.cwd !== this.economizerCwd) this.refreshEconomizer(cx, focused()?.cwd);
     publishSpaceColors(theme(), tree.folderOf);
     setAgentOrder([...tree.inbox, ...tree.rows.filter((r) => r.kind === "agent")].map((r) => r.agent.address));
     const body = this.width < 120 ? collapsedView(tree) : expandedView(tree, this);
@@ -69,6 +75,26 @@ export default class Tree extends View {
   refreshAccounts(cx) {
     cx.spawn(async (cx) => {
       this.accounts = await askAccounts();
+      cx.notify();
+    });
+  }
+
+  // Asked again when the focus moves to another folder, and each minute for what sessions changed.
+  refreshEconomizer(cx, cwd) {
+    this.economizerCwd = cwd;
+    if (!cwd) return;
+    cx.spawn(async (cx) => {
+      const economizer = await askEconomizer(cwd);
+      if (cwd !== this.economizerCwd) return; // the focus moved on while te answered
+      this.economizer = economizer;
+      cx.notify();
+    });
+  }
+
+  changePruning(cx, cwd, action, items) {
+    cx.spawn(async (cx) => {
+      await changePruning(cwd, action, items);
+      this.economizer = await askEconomizer(cwd);
       cx.notify();
     });
   }
@@ -138,6 +164,7 @@ function expandedView(tree, view) {
       .children(tree.rows.map((row) => ROW_VIEWS[row.kind](t, row, view))))
     .when(tree.inbox.length > 0, (el) => el.child(inbox(t, tree.inbox, view)))
     .when(view.done.length > 0, (el) => el.child(doneShelf(t, view.done, view.doneOpen, (_e, cx) => { view.doneOpen = !view.doneOpen; cx.notify(); }, ICONS)))
+    .when(view.economizer !== null, (el) => el.child(economizerShelf(t, view.economizer, view.economizerOpen, (_e, cx) => { view.economizerOpen = !view.economizerOpen; cx.notify(); }, (cx, cwd, action, items) => view.changePruning(cx, cwd, action, items))))
     .when(view.accounts.length > 0, (el) => el.child(accountsShelf(t, view.accounts, view.accountsOpen, (_e, cx) => { view.accountsOpen = !view.accountsOpen; cx.notify(); })));
 }
 
