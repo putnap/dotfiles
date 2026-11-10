@@ -108,8 +108,33 @@ case "$1" in
 esac
 MOCK
 chmod +x "$scratch/bin/herdr"
+cat > "$scratch/bin/claude" <<'MOCK'
+#!/usr/bin/env bash
+printf 'claude %s\n' "$*" >> "$TEST_CALLS"
+case "$*" in
+  --version) echo '9.9.9 (Claude Code)';;
+  'plugin install tokeneconomizer@tokeneconomizer')
+    mkdir -p "$HOME/te/scripts"
+    printf '#!/usr/bin/env bash\nprintf "te %%s\\n" "$*" >> "$TEST_CALLS"\n' > "$HOME/te/scripts/te"
+    chmod +x "$HOME/te/scripts/te"
+    mkdir -p "$HOME/.claude/plugins"
+    jq -n --arg path "$HOME/te" '{plugins:{"tokeneconomizer@tokeneconomizer":[{installPath:$path}]}}' > "$HOME/.claude/plugins/installed_plugins.json";;
+esac
+MOCK
+chmod +x "$scratch/bin/claude"
 : > "$TEST_CALLS"
 HOME=$plugin_home PATH=$scratch/bin:$PATH bash "$repo/agents/.config/agent-setup/apply.sh" --repo "$repo" --home "$plugin_home" --apply --integrations >/dev/null
 grep -qx 'plugin install kryptamine/herdr-auto-title --yes' "$TEST_CALLS"
 if grep -q 'plugin install devswha/ovis' "$TEST_CALLS"; then echo 'installed plugin reinstalled' >&2; exit 1; fi
+grep -qx 'claude plugin marketplace add microsoft/TokenEconomizer' "$TEST_CALLS"
+grep -qx 'claude plugin install tokeneconomizer@tokeneconomizer' "$TEST_CALLS"
+grep -qx 'te --host claude toolprune refresh-catalog' "$TEST_CALLS"
+grep -qx 'te config set toolprune=propose --global' "$TEST_CALLS"
+grep -qx "te config set toolprune=off --cwd $repo" "$TEST_CALLS"
+mkdir -p "$plugin_home/.tokeneconomizer/hosts/claude"
+printf '{"claude_code_version":"9.9.9"}\n' > "$plugin_home/.tokeneconomizer/hosts/claude/catalog.json"
+: > "$TEST_CALLS"
+HOME=$plugin_home PATH=$scratch/bin:$PATH bash "$repo/agents/.config/agent-setup/apply.sh" --repo "$repo" --home "$plugin_home" --apply --integrations >/dev/null
+if grep -Eq '^(claude plugin|te .*refresh-catalog)' "$TEST_CALLS"; then echo 'TokenEconomizer reinstalled or refreshed' >&2; exit 1; fi
 echo 'Plugin tests passed: missing GitHub plugins install, installed ones are skipped.'
+echo 'TokenEconomizer tests passed: installs once, only proposes pruning (off in dotfiles), refreshes its catalog only on a new Claude version.'

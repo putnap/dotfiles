@@ -81,6 +81,33 @@ write() {
   chmod 600 "$temporary"
   mv -f "$temporary" "$target"
 }
+# settings.json only enables a marketplace plugin; Claude fetches it through its own CLI.
+install_tokeneconomizer() {
+  if jq -e '.plugins["tokeneconomizer@tokeneconomizer"]' "$home/.claude/plugins/installed_plugins.json" >/dev/null 2>&1; then return 0; fi
+  echo "install Claude plugin tokeneconomizer"
+  [[ $apply == true ]] || return 0
+  jq -e '.tokeneconomizer' "$home/.claude/plugins/known_marketplaces.json" >/dev/null 2>&1 || claude plugin marketplace add microsoft/TokenEconomizer
+  claude plugin install tokeneconomizer@tokeneconomizer
+}
+# Tool pruning only proposes, so no tool disappears unseen; dotfiles isn't worth pruning at all.
+configure_tokeneconomizer() {
+  local te
+  te=$(jq -r '.plugins["tokeneconomizer@tokeneconomizer"][0].installPath' "$home/.claude/plugins/installed_plugins.json")/scripts/te
+  [[ $apply == true ]] || return 0
+  "$te" config set toolprune=propose --global >/dev/null
+  "$te" config set toolprune=off --cwd "$repo" >/dev/null
+}
+# Tool pruning needs the tool list each Claude Code version loads, so record it again after an upgrade.
+refresh_tokeneconomizer_catalog() {
+  local catalog=$home/.tokeneconomizer/hosts/claude/catalog.json version te
+  version=$(claude --version | cut -d ' ' -f 1)
+  if [[ $(jq -r '.claude_code_version' "$catalog" 2>/dev/null) == "$version" ]]; then return 0; fi
+  echo "refresh TokenEconomizer tool catalog for Claude $version"
+  [[ $apply == true ]] || return 0
+  te=$(jq -r '.plugins["tokeneconomizer@tokeneconomizer"][0].installPath' "$home/.claude/plugins/installed_plugins.json")/scripts/te
+  "$te" --host claude toolprune refresh-catalog >/dev/null ||
+    echo "TokenEconomizer catalog refresh failed; run /tokeneconomizer:toolprune refresh-catalog in Claude" >&2
+}
 # Prepare every merge before changing live files.
 protected='["permissions","skipDangerousModePermissionPrompt","sandbox_mode","sandbox","sandbox_permissions","approval_policy","approvals_reviewer","ask_for_approval","projects"]'
 for name in claude codex peon claude-keybindings claude-theme; do
@@ -187,6 +214,9 @@ if [[ $integrations == true ]]; then
       claude mcp add --scope user atuin -- /run/current-system/sw/bin/atuin mcp
     fi
   fi
+  install_tokeneconomizer
+  configure_tokeneconomizer
+  refresh_tokeneconomizer_catalog
 fi
 registry=$home/.config/herdr/plugins.json
 [[ ! -f $registry ]] || cp "$registry" "$scratch/registry"

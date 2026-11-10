@@ -12,6 +12,8 @@ notify_claude_update = false
 
 [env]
 DISABLE_AUTOUPDATER = "1"
+# TokenEconomizer learns from each repository's earlier sessions too, with no model call.
+TE_HISTORY_IMPORT = "on"
 
 [statusLine]
 type = "command"
@@ -21,6 +23,11 @@ command = "bash ~/.claude/statusline-command.sh"
 "frontend-design@claude-plugins-official" = true
 "rust-analyzer-lsp@claude-plugins-official" = true
 "swift-lsp@claude-plugins-official" = true
+"tokeneconomizer@tokeneconomizer" = true
+
+[extraKnownMarketplaces.tokeneconomizer.source]
+source = "github"
+repo = "microsoft/TokenEconomizer"
 
 [voice]
 enabled = true
