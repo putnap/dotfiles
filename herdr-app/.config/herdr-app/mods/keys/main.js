@@ -6,7 +6,7 @@
 
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
-import { run, hc, exec, home, panes, focused, agents, props, openOverlay, closeOverlay, nextCommand, notify, theme, shared, setShared } from "herdr";
+import { run, hc, exec, home, appHome, readTextFile, panes, focused, agents, props, openOverlay, closeOverlay, nextCommand, notify, theme, shared, setShared } from "herdr";
 
 const DEFAULT_AGENT = ["claude"];
 const NAV_KEYS = { left: "ctrl+h", down: "ctrl+j", up: "ctrl+k", right: "ctrl+l" };
@@ -48,8 +48,7 @@ const PREFIX_GROUPS = {
     "$": ["rename", () => run("space.rename")],
     W: ["rename", () => run("space.rename")],
     D: ["close", () => run("space.close")],
-    "ctrl-g": ["new worktree", () => worktree("new", 460, 280)],
-    G: ["open worktree", () => worktree("open", 560, 480)],
+    "ctrl-g": ["new or open worktree", () => worktreePicker()],
     "ctrl-x": ["remove worktree", () => worktree("remove", 440, 260)],
   },
   Panes: {
@@ -249,13 +248,37 @@ function breakPane() {
 }
 
 // herdr's popup commands: a terminal over the window that closes when its program exits.
-async function popup(argv) {
+async function popup(argv, width = 0.9, height = 0.9) {
   const cwd = focused()?.cwd ?? undefined;
   const started = await hc(["run", "--bg", "--json", ...(cwd ? ["--cwd", cwd] : []), "--", ...argv]);
   if (started.code !== 0) return notify({ title: `${argv[0]} didn't start`, body: started.stderr, level: "error" });
   const { address } = JSON.parse(started.stdout);
-  openOverlay({ kind: "dialog", width: 0.9, height: 0.9, layout: { type: "block", content: { terminal: address } } });
+  openOverlay({ kind: "dialog", width, height, layout: { type: "block", content: { terminal: address } } });
   run("pane.focus", { terminal: address });
+}
+
+// The worktree picker at herdr's 70% × 60% of the window, kept within sizes that read well on
+// a laptop and on an ultrawide.
+const PICKER = { width: { share: 0.7, min: 1200, max: 1500 }, height: { share: 0.6, min: 700, max: 900 } };
+
+async function worktreePicker() {
+  const size = await windowSize();
+  popup(["bash", `${appHome()}/mods/git-worktree/pick.sh`], fit(size.width, PICKER.width), fit(size.height, PICKER.height));
+}
+
+// A share of the window's side in px, between min and max, and never past the window. Unknown
+// side: the plain share.
+function fit(side, { share, min, max }) {
+  if (!side) return share;
+  return Math.min(side * 0.95, Math.max(min, Math.min(max, side * share)));
+}
+
+// herdr-app has no window-size API; it saves the window's bounds [x, y, width, height] in
+// window.json as the window moves. 0 × 0 when it can't be read.
+async function windowSize() {
+  const text = await readTextFile(`${appHome()}/window.json`).catch(() => null);
+  const bounds = text ? JSON.parse(text).bounds : null;
+  return bounds ? { width: bounds[2], height: bounds[3] } : { width: 0, height: 0 };
 }
 
 // git-worktree is Herdr's worktree mod cloned to put checkouts where herdr's own flow does.
