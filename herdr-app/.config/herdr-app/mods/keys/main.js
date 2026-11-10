@@ -6,7 +6,7 @@
 
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
-import { run, hc, exec, home, appHome, readTextFile, panes, focused, agents, props, openOverlay, closeOverlay, nextCommand, notify, theme, shared, setShared } from "herdr";
+import { run, hc, exec, home, appHome, readTextFile, keys, panes, focused, agents, props, openOverlay, closeOverlay, nextCommand, notify, theme, shared, setShared } from "herdr";
 
 const DEFAULT_AGENT = ["claude"];
 const NAV_KEYS = { left: "ctrl+h", down: "ctrl+j", up: "ctrl+k", right: "ctrl+l" };
@@ -23,6 +23,8 @@ const COMMANDS = {
   "hunk-open": () => openHunk(),
   lazygit: () => popup(["lazygit"]),
   pressed: () => PREFIX[shared("keys.pressed")]?.[1](),
+  press: (key) => PREFIX[key]?.[1](),
+  help: () => keyHelp(),
 };
 
 // The keys after the prefix, in the groups the popup shows: key → [what it does, action]. Chords
@@ -90,7 +92,7 @@ const PREFIX_GROUPS = {
   },
   App: {
     "ctrl-s": ["settings", () => run("app.settings")],
-    "?": ["all keys", () => run("app.help")],
+    "?": ["all keys", () => keyHelp()],
   },
 };
 // The popup's columns, top to bottom, by group.
@@ -129,11 +131,19 @@ async function receiveCommands(cx) {
 
 // One failing command must not end the loop: every later key would go unanswered.
 async function runCommand(command) {
+  const { name, value } = commandParts(command);
   try {
-    await COMMANDS[command]?.();
+    await COMMANDS[name]?.(value);
   } catch (error) {
     notify({ title: `keys: ${command} failed`, body: String(error?.message ?? error), level: "error" });
   }
+}
+
+// "press:z" is the command press with the value z, as keys.json's "name:value".
+function commandParts(command) {
+  const at = command.indexOf(":");
+  if (at < 0) return { name: command, value: null };
+  return { name: command.slice(0, at), value: command.slice(at + 1) };
 }
 
 // which-key's look: every group at once, in columns, the keys in the accent colour.
@@ -255,10 +265,11 @@ async function popup(argv, width = 0.9, height = 0.9) {
   const { address } = JSON.parse(started.stdout);
   openOverlay({ kind: "dialog", width, height, layout: { type: "block", content: { terminal: address } } });
   run("pane.focus", { terminal: address });
+  return address;
 }
 
-// The worktree picker at herdr's 70% × 60% of the window, kept within sizes that read well on
-// a laptop and on an ultrawide.
+// The fzf pickers at herdr's 70% × 60% of the window, kept within sizes that read well on a
+// laptop and on an ultrawide.
 const PICKER = { width: { share: 0.7, min: 1200, max: 1500 }, height: { share: 0.6, min: 700, max: 900 } };
 
 async function worktreePicker() {
@@ -271,6 +282,65 @@ async function worktreePicker() {
 function fit(side, { share, min, max }) {
   if (!side) return share;
   return Math.min(side * 0.95, Math.max(min, Math.min(max, side * share)));
+}
+
+// ctrl+?: every key in one fzf list. The popup's terminal is watched without blocking the command
+// loop, so other keys still answer while the list is open.
+const KEY_HELP_CHOICE = "/tmp/herdr-app-keys-help.choice";
+const PREFIX_SHOWN = "prefix";
+
+async function keyHelp() {
+  const size = await windowSize();
+  const argv = ["bash", `${appHome()}/mods/keys/help.sh`, keyHelpRows(), KEY_HELP_CHOICE];
+  const terminal = await popup(argv, fit(size.width, PICKER.width), fit(size.height, PICKER.height));
+  if (terminal) runChosenKeyOnExit(terminal);
+}
+
+// The prefix's keys first, by group, then keys.json's, by section: "action<TAB>keys  what  where".
+function keyHelpRows() {
+  const prefixed = Object.entries(PREFIX_GROUPS).flatMap(([group, entries]) =>
+    Object.entries(entries).map(([key, [what]]) => keyHelpRow(`keys.press:${key}`, `${PREFIX_SHOWN} ${readableKeys(key)}`, what, group)));
+  const bound = keys().map((k) => keyHelpRow(k.action, readableKeys(k.keys), actionLabel(k.action), k.section));
+  return [...prefixed, ...bound].join("\n");
+}
+
+function keyHelpRow(action, shownKeys, what, where) {
+  return `${action}\t${shownKeys.padEnd(24)} ${what.padEnd(36)} ${where}`;
+}
+
+// keys.json's ctrl-shift-j reads as ctrl+shift+j; a last "-" is the minus key itself.
+function readableKeys(chord) {
+  return chord.replace(/-(?=.)/g, "+");
+}
+
+function actionLabel(action) {
+  if (action.startsWith("send:")) return `type ${JSON.stringify(action.slice(5))}`;
+  const { name, value } = commandParts(action);
+  return [name.replace(/[._-]/g, " "), value].filter(Boolean).join(" ");
+}
+
+async function runChosenKeyOnExit(terminal) {
+  try {
+    await waitForExit(terminal);
+    const action = (await readTextFile(KEY_HELP_CHOICE))?.trim();
+    if (action) await runAction(action);
+  } catch (error) {
+    notify({ title: "keys: the chosen key failed", body: String(error?.message ?? error), level: "error" });
+  }
+}
+
+// hc wait checks in every few minutes while the terminal still runs.
+async function waitForExit(terminal) {
+  for (;;) {
+    const waited = await hc(["wait", terminal, "--json"]);
+    if (waited.code !== 0 || JSON.parse(waited.stdout).reason !== "timeout") return;
+  }
+}
+
+// herdr-app do takes keys.json's actions as written: "tab.select:1", "keys.press:z".
+async function runAction(action) {
+  const done = await exec("herdr-app", ["do", action]);
+  if (done.code !== 0) notify({ title: `${action} can't run from here`, body: done.stdout || done.stderr, level: "error" });
 }
 
 // herdr-app has no window-size API; it saves the window's bounds [x, y, width, height] in

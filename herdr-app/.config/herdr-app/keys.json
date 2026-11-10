@@ -34,6 +34,7 @@
     "shift-f2": "space.rename",
     "cmd-/": "app.help",
     "cmd-shift-/": "app.help",
+    "ctrl-shift-/": "app.help",
     "cmd-b": "layout.toggle:sidebar",
     "cmd-=": "app.zoom_in",
     "cmd-+": "app.zoom_in",
@@ -99,7 +100,8 @@
     "shift-down": "tree.next",
     "ctrl-shift-j": "tree.inbox-next",
     "ctrl-shift-k": "tree.inbox-previous",
-    "ctrl-shift-i": "tree.attention"
+    "ctrl-shift-i": "tree.attention",
+    "ctrl-shift-/": "keys.help"
   },
   "mod:reviewer": {
     "ctrl-h": "reviewer.leave"
