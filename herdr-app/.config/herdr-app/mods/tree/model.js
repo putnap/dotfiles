@@ -133,16 +133,21 @@ function spaceEntries(tree, ownsFolder, context) {
 
 function homeEntries(tree, ownsFolder, context) {
   const home = checkoutEntries(tree.home, tree.checkout, context);
-  return home.length > 0 || ownsFolder ? home : [checkoutRow(`checkout:${tree.space.id}`, worktreeName(tree), tree.checkout, tree.space, tree.home, { space: tree.space.id }, context)];
+  // Selecting the space would land on its last-focused pane, often an agent's row further down.
+  const target = tree.home.length > 0 ? { pane: shellOf(tree.home).pane } : { space: tree.space.id };
+  return home.length > 0 || ownsFolder ? home : [checkoutRow(`checkout:${tree.space.id}`, worktreeName(tree), tree.checkout, tree.space, tree.home, target, context)];
 }
 
 function groupEntries(tree, context) {
   return tree.groups.flatMap((group) => {
     const rows = checkoutEntries(group.panes, group.checkout, context);
     if (rows.length > 0) return rows;
-    const shell = group.panes.find((p) => !p.status) ?? group.panes[0];
-    return [checkoutRow(`checkout:${tree.space.id}:${group.top}`, group.top.split("/").pop(), group.checkout, tree.space, group.panes, { pane: shell.pane }, context)];
+    return [checkoutRow(`checkout:${tree.space.id}:${group.top}`, group.top.split("/").pop(), group.checkout, tree.space, group.panes, { pane: shellOf(group.panes).pane }, context)];
   });
+}
+
+function shellOf(list) {
+  return list.find((p) => !p.status) ?? list[0];
 }
 
 function checkoutEntries(list, checkout, { here, agentOfPane, git, nameOf }) {
