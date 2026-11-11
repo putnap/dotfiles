@@ -8,4 +8,4 @@ for package in */; do
   case "$package" in agents/|claude/|herdr/|workmux/|docs/|tests/|scripts/) continue ;; esac
   stow -v "${package%/}"
 done
-ya pack -i
+ya pkg install
