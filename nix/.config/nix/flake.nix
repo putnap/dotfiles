@@ -203,7 +203,6 @@
           ];
           casks = [
             "android-studio"
-            "stretchly"
             "ghostty"
             "claude-code@latest"
             "claude"
@@ -253,10 +252,6 @@
               echo "copying $src" >&2
               ${pkgs.mkalias}/bin/mkalias "$src" "/Applications/Nix Apps/$app_name"
             done
-
-            # Dequarantine 
-            xattr -r -d com.apple.quarantine /Applications/Stretchly.app
-            xattr -r -d com.apple.quarantine /Applications/AeroSpace.app
           '';
 
         system.defaults = {
