@@ -134,7 +134,6 @@ eval "$(atuin init zsh)"
 # export NVM_DIR="$HOME/.nvm"
 # [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 # [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
-. "$HOME/.vite-plus/env"
 
 export CARAPACE_BRIDGES='zsh,fish,bash,inshellisense' # optional
 zstyle ':completion:*' format $'\e[2;37mCompleting %d\e[m'
@@ -237,4 +236,4 @@ esac
 # zprof
 
 # clauth completions
-source "/Users/papu/.clauth/completions/clauth.zsh"
+source <(clauth completions zsh)
