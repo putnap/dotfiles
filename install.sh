@@ -14,4 +14,10 @@ for package in */; do
   case "$package" in agents/|claude/|herdr/|workmux/|docs/|tests/|scripts/) continue ;; esac
   stow -v "${package%/}"
 done
+# atuin's daemon starts with the first rebuild, before Stow, and writes a default
+# ~/.atuin/config.toml that atuin then reads instead of ours.
+if [ -e ~/.atuin/config.toml ]; then
+  mv ~/.atuin/config.toml ~/.atuin/config.toml.default
+  launchctl kickstart -k "gui/$(id -u)/org.nixos.atuin-daemon"
+fi
 ya pkg install
