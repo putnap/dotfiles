@@ -3,6 +3,13 @@ local colors = require("colors")
 -- The installed app's daemon CLI: the same answer the window and Raycast read.
 local LONGPLAYD = "/Applications/Longplay.app/Contents/MacOS/longplayd"
 
+-- Not every Mac has Longplay; without it there is nothing to show.
+local probe = io.open(LONGPLAYD)
+if not probe then
+	return
+end
+probe:close()
+
 local longplay = sbar.add("item", "longplay", {
 	position = "right",
 	update_freq = 20,
