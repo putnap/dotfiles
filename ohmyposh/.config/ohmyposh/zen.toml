@@ -9,7 +9,7 @@ foreground = "magenta"
 background = "transparent"
 
 [transient_prompt]
-template = "❯ "
+template = "{{ if .Env.SSH_CONNECTION }}<yellow>{{ .HostName }}</> {{ end }}❯ "
 background = "transparent"
 foreground_templates = [
   "{{if gt .Code 0}}red{{end}}",
