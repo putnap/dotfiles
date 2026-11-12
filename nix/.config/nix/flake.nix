@@ -349,6 +349,8 @@
         system.activationScripts.postActivation.text = ''
           echo "keeping papulab awake..." >&2
           pmset -a sleep 0 disksleep 0 disablesleep 1
+          # Nobody searches a headless lab, and indexing every node_modules swamps its CPU.
+          mdutil -a -i off >/dev/null
         '';
 
         environment.systemPackages = [ pkgs.cliproxyapi ];
