@@ -21,3 +21,6 @@ if [ -e ~/.atuin/config.toml ]; then
   launchctl kickstart -k "gui/$(id -u)/org.nixos.atuin-daemon"
 fi
 ya pkg install
+# pnpm, node and npm are Vite+'s shims; its ~/.zshenv puts them on every zsh's PATH.
+vp env setup
+vp env on
