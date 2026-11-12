@@ -1,2 +1,4 @@
 # Ovis shows the Herdr desktop app's terminals (herdr-core, hc) instead of herdr's TUI server.
 OVIS_RUNTIME=herdr-core
+# Named, Ovis runs it as is: found on its own, it refuses Nix's /run (/private/var/run is group-writable).
+OVIS_HC_BIN=/run/current-system/sw/bin/hc
