@@ -356,19 +356,96 @@
         # The platform the configuration will be used on.
         nixpkgs.hostPlatform = system;
       };
+
+      homebrewModules = [
+        nix-homebrew.darwinModules.nix-homebrew
+        {
+          nix-homebrew = {
+            enable = true;
+            user = user;
+          };
+        }
+      ];
+
+      # papulab: the always-on Mac that herdr drives over ssh. Its Claude accounts sit
+      # behind CLIProxyAPI; keys live in ~/.cli-proxy-api, never in this public repo.
+      lab = { pkgs, ... }: {
+        networking.hostName = "papulab";
+        networking.computerName = "papulab";
+        networking.localHostName = "papulab";
+
+        services.openssh.enable = true;
+
+        # pmset rather than power.sleep: nix-darwin sets that through systemsetup,
+        # which needs Full Disk Access. disablesleep keeps it awake with the lid shut.
+        system.activationScripts.postActivation.text = ''
+          echo "keeping papulab awake..." >&2
+          pmset -a sleep 0 disksleep 0 disablesleep 1
+        '';
+
+        environment.systemPackages = [ pkgs.cliproxyapi ];
+
+        launchd.user.agents.cliproxyapi = {
+          command = "${pkgs.writeShellScript "cliproxyapi-start" ''
+            set -euo pipefail
+            dir="$HOME/.cli-proxy-api"
+
+            make_key() {
+              if [ ! -e "$dir/$1" ]; then
+                (umask 077; /usr/bin/openssl rand -hex 32 > "$dir/$1")
+              fi
+            }
+
+            # The proxy hashes the management key in place on start, hence the plain copy.
+            write_config() {
+              if [ ! -e "$dir/config.yaml" ]; then
+                (umask 077; cat > "$dir/config.yaml" <<EOF
+            config-version: 8
+            server:
+              host: "127.0.0.1"
+              port: 8317
+            management:
+              secret-key: "$(cat "$dir/management-key")"
+            access:
+              api-keys:
+                - "$(cat "$dir/client-key")"
+            EOF
+                )
+              fi
+            }
+
+            mkdir -p "$dir"
+            chmod 700 "$dir"
+            make_key client-key
+            make_key management-key
+            write_config
+            exec ${pkgs.cliproxyapi}/bin/cliproxyapi -config "$dir/config.yaml"
+          ''}";
+          environment.HOME = "/Users/${user}";
+          serviceConfig = {
+            RunAtLoad = true;
+            KeepAlive = true;
+            StandardOutPath = "/Users/${user}/Library/Logs/cliproxyapi.log";
+            StandardErrorPath = "/Users/${user}/Library/Logs/cliproxyapi.error.log";
+          };
+        };
+
+        # Every shell, herdr's included, sends Claude Code through the proxy once it has a key.
+        environment.extraInit = ''
+          if [ -r "$HOME/.cli-proxy-api/client-key" ]; then
+            export ANTHROPIC_BASE_URL=http://127.0.0.1:8317
+            export ANTHROPIC_AUTH_TOKEN="$(cat "$HOME/.cli-proxy-api/client-key")"
+          fi
+        '';
+      };
     in
     {
       darwinConfigurations.mac = nix-darwin.lib.darwinSystem {
-        modules = [
-          configuration
-          nix-homebrew.darwinModules.nix-homebrew
-          {
-            nix-homebrew = {
-              enable = true;
-              user = user;
-            };
-          }
-        ];
+        modules = [ configuration ] ++ homebrewModules;
+      };
+
+      darwinConfigurations.papulab = nix-darwin.lib.darwinSystem {
+        modules = [ configuration lab ] ++ homebrewModules;
       };
 
       # # Expose the package set, including overlays, for convenience.
