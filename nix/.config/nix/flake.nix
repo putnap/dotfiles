@@ -6,28 +6,13 @@
     nix-darwin.url = "github:LnL7/nix-darwin";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
     nix-homebrew.url = "github:zhaofengli-wip/nix-homebrew";
-    # The release binary: a source build recompiles on every nixpkgs bump.
-    # `nix flake update` refetches latest, so nixr still upgrades it.
-    clauth.url = "file+https://github.com/uwuclxdy/clauth/releases/latest/download/clauth-macos-aarch64";
-    clauth.flake = false;
-    # The last nixpkgs Hydra built atuin (18.24.2) from: 18.24.4's e2e tests fail on Hydra and here.
-    nixpkgs-atuin.url = "github:NixOS/nixpkgs/f4b794aaffc0e3d45da81088d492b118224bb476";
     # home-manager.url = "github:nix-community/home-manager";
   };
 
-  outputs = inputs@{ self, nix-darwin, nixpkgs, nix-homebrew, home-manager, nixpkgs-atuin, clauth }:
+  outputs = inputs@{ self, nix-darwin, nixpkgs, nix-homebrew, home-manager }:
     let
       system = "aarch64-darwin";
       user = "papu";
-      clauthPackage = nixpkgs.legacyPackages.${system}.runCommand "clauth" {} ''
-        install -Dm755 ${clauth} $out/bin/clauth
-      '';
-      # Rebuilds fail once nixpkgs' atuin moves past this; if Hydra built the new one
-      # (hydra.nixos.org/job/nixpkgs/unstable/atuin.aarch64-darwin) unpin, else bump this.
-      atuinBroken = "18.24.4";
-      atuinPinned = nixpkgs.lib.throwIf (nixpkgs.legacyPackages.${system}.atuin.version != atuinBroken)
-        "nixpkgs has atuin ${nixpkgs.legacyPackages.${system}.atuin.version}: unpin it in flake.nix, or set atuinBroken to that to keep the pin"
-        nixpkgs-atuin.legacyPackages.${system}.atuin;
       configuration = { pkgs, config, ... }: {
 
         system.primaryUser = user;
@@ -76,13 +61,12 @@
                 posting
                 gh
                 gh-dash
-                atuinPinned
+                atuin
                 herdr
                 herdr-core # hc, the server the herdr-app cask's window runs on
                 bun # Ovis's herdr plugin builds and runs on it
                 cloudflared
                 codex
-                clauthPackage
 
                 # dev SDKs
                 python3
