@@ -235,5 +235,3 @@ esac
 
 # zprof
 
-# clauth completions
-source <(clauth completions zsh)

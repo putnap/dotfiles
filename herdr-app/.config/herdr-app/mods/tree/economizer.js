@@ -1,4 +1,4 @@
-// TokenEconomizer for the focused pane's repository, above clauth's accounts: the never-used tools it
+// TokenEconomizer for the focused pane's repository, above the proxy's accounts: the never-used tools it
 // proposes to take out of Claude here and those it took, per source (built-in, or each MCP server)
 // beside how many of that source's tools were used. Servers the repository's own .mcp.json brings,
 // and protected ones, are never offered. Each row prunes, protects or restores just its own tools.

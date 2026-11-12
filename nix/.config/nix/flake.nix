@@ -149,22 +149,6 @@
           };
         };
 
-        # --standby yields to a daemon started by hand instead of exiting into a
-        # KeepAlive restart loop. Store paths stay out of the plist, as above.
-        launchd.user.agents.clauth = {
-          command = "/run/current-system/sw/bin/clauth daemon --standby";
-          environment = {
-            HOME = "/Users/${user}";
-            PATH = "/run/current-system/sw/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin";
-          };
-          serviceConfig = {
-            RunAtLoad = true;
-            KeepAlive = true;
-            StandardOutPath = "/Users/${user}/Library/Logs/clauth-daemon.log";
-            StandardErrorPath = "/Users/${user}/Library/Logs/clauth-daemon.error.log";
-          };
-        };
-
         # Puts Ovis on the phone over the tailnet; the daemon also gives `tailscale` on PATH.
         services.tailscale.enable = true;
 
@@ -432,11 +416,14 @@
             StandardErrorPath = "/Users/${user}/Library/Logs/cliproxyapi.error.log";
           };
         };
+      };
 
-        # Every shell, herdr's included, sends Claude Code through the proxy once it has a key.
+      # Every shell, herdr's included, sends Claude Code through papulab's proxy once this Mac
+      # has the proxy's client key in ~/.cli-proxy-api.
+      claudeThroughProxy = url: {
         environment.extraInit = ''
           if [ -r "$HOME/.cli-proxy-api/client-key" ]; then
-            export ANTHROPIC_BASE_URL=http://127.0.0.1:8317
+            export ANTHROPIC_BASE_URL=${url}
             export ANTHROPIC_AUTH_TOKEN="$(cat "$HOME/.cli-proxy-api/client-key")"
           fi
         '';
@@ -444,11 +431,11 @@
     in
     {
       darwinConfigurations.mac = nix-darwin.lib.darwinSystem {
-        modules = [ configuration ] ++ homebrewModules;
+        modules = [ configuration (claudeThroughProxy "http://lab.putna.dev") ] ++ homebrewModules;
       };
 
       darwinConfigurations.papulab = nix-darwin.lib.darwinSystem {
-        modules = [ configuration lab ] ++ homebrewModules;
+        modules = [ configuration lab (claudeThroughProxy "http://127.0.0.1:8317") ] ++ homebrewModules;
       };
 
       # # Expose the package set, including overlays, for convenience.

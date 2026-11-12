@@ -17,18 +17,6 @@
         "type": "github"
       }
     },
-    "clauth": {
-      "flake": false,
-      "locked": {
-        "narHash": "sha256-zlBjwblorO2AZaZVR3zPJQ1uOOPbhdd2cHjToJw0wGc=",
-        "type": "file",
-        "url": "https://github.com/uwuclxdy/clauth/releases/latest/download/clauth-macos-aarch64"
-      },
-      "original": {
-        "type": "file",
-        "url": "https://github.com/uwuclxdy/clauth/releases/latest/download/clauth-macos-aarch64"
-      }
-    },
     "home-manager": {
       "inputs": {
         "nixpkgs": "nixpkgs"
@@ -131,7 +119,6 @@
     },
     "root": {
       "inputs": {
-        "clauth": "clauth",
         "home-manager": "home-manager",
         "nix-darwin": "nix-darwin",
         "nix-homebrew": "nix-homebrew",
