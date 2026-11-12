@@ -409,6 +409,9 @@
             access:
               api-keys:
                 - "$(cat "$dir/client-key")"
+            # Keep a session on its account: moving it loses the prompt cache.
+            routing:
+              session-affinity: true
             EOF
                 )
               fi
